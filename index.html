@@ -1,0 +1,269 @@
+{% extends 'base.html' %}
+
+{% block title %}Go2 Robot Control{% endblock %}
+
+{% block content %}
+<h1>Contrôle du robot Go2</h1>
+
+<form method="post" id="command-form">
+    <label for="command">Choisissez une commande :</label>
+    <select name="command" id="command" required>
+        <option value="" disabled selected>-- Sélectionnez une commande --</option>
+        <option value="Damp">Damp</option>
+        <option value="BalanceStand">BalanceStand</option>
+        <option value="StopMove">StopMove</option>
+        <option value="StandUp">StandUp</option>
+        <option value="StandDown">StandDown</option>
+        <option value="RecoveryStand">RecoveryStand</option>
+        <option value="Euler">Euler</option>
+        <option value="Move">Move</option>
+        <option value="Sit">Sit</option>
+        <option value="RiseSit">RiseSit</option>
+        <option value="SwitchGait">SwitchGait</option>
+        <option value="Trigger">Trigger</option>
+        <option value="BodyHeight">BodyHeight</option>
+        <option value="FootRaiseHeight">FootRaiseHeight</option>
+        <option value="SpeedLevel">SpeedLevel</option>
+        <option value="Hello">Hello</option>
+        <option value="Stretch">Stretch</option>
+        <option value="TrajectoryFollow">TrajectoryFollow</option>
+        <option value="ContinuousGait">ContinuousGait</option>
+        <option value="Content">Content</option>
+        <option value="Wallow">Wallow</option>
+        <option value="Dance1">Dance1</option>
+        <option value="Dance2">Dance2</option>
+        <option value="GetBodyHeight">GetBodyHeight</option>
+        <option value="GetFootRaiseHeight">GetFootRaiseHeight</option>
+        <option value="GetSpeedLevel">GetSpeedLevel</option>
+        <option value="SwitchJoystick">SwitchJoystick</option>
+        <option value="Pose">Pose</option>
+        <option value="Scrape">Scrape</option>
+        <option value="FrontFlip">FrontFlip</option>
+        <option value="FrontJump">FrontJump</option>
+        <option value="FrontPounce">FrontPounce</option>
+        <option value="WiggleHips">WiggleHips</option>
+        <option value="GetState">GetState</option>
+        <option value="EconomicGait">EconomicGait</option>
+        <option value="FingerHeart">FingerHeart</option>
+    </select>
+    <button type="submit">Envoyer</button>
+</form>
+
+<h2>Joystick virtuel</h2>
+<div id="joystick-zone"></div>
+
+<h2>Localisation du robot</h2>
+<div id="robot-coords" style="margin-bottom: 10px; font-weight: bold;">
+    Position du robot : <span id="coords-value">Chargement...</span>
+</div>
+<div id="robot-orientation" style="margin-bottom:10px; display: flex; align-items: center;">
+    Orientation : <span id="yaw-value" style="margin: 0 10px;">0°</span>
+    <span style="width:40px;height:40px;display:inline-block;position:relative;">
+        <img id="compass-arrow" src="{{ url_for('static', filename='arrow.png') }}"
+             style="width:40px;height:40px;transition:transform 0.3s;position:absolute;top:0;left:0;"/>
+    </span>
+</div>
+<div id="robot-state" style="margin-bottom: 10px; font-weight: bold;">
+    État : <span id="state-mode">...</span> |
+    Batterie : <span id="state-battery">...</span> % |
+    Statut : <span id="state-status">...</span>
+</div>
+<div style="margin-bottom: 10px;">
+    <button id="toggle-drawing" onclick="toggleDrawing()">Activer le tracé</button>
+    <button id="send-path" onclick="sendPath()" disabled>Envoyer le chemin au robot</button>
+    <button id="clear-path" onclick="clearPath()" disabled>Effacer le tracé</button>
+</div>
+<div id="map"></div>
+
+{% if ack_info %}
+    <div class="alert alert-success">
+        {{ ack_info }}
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// --- Initialisation de la carte Leaflet ---
+const pathCoords = [
+    [48.777164396, 2.375696799],
+    [48.777266135, 2.375488087],
+    [48.777245920, 2.375302510],
+    [48.777219946, 2.374943893],
+    [48.777252453, 2.375237042],
+    [48.777247827, 2.375732456],
+    [48.777378526, 2.375937183],
+    [48.777426862, 2.376234988],
+    [48.777376616, 2.376366631],
+    [48.777280918, 2.376314928],
+    [48.777184431, 2.376204572],
+    [48.777053307, 2.376061392],
+    [48.777101311, 2.375851686],
+];
+
+// Initialiser la carte sur le premier point du chemin
+const map = L.map('map').setView(pathCoords[0], 19);
+
+// Ajouter le fond de carte OpenStreetMap
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 22,
+}).addTo(map);
+
+// Créer un LatLngBounds pour englober tous les points
+let bounds = new L.LatLngBounds(pathCoords);
+map.fitBounds(bounds);
+
+// --- Affichage des points du chemin ---
+pathCoords.forEach(coord => {
+    L.circleMarker([coord[0], coord[1]], {
+        color: 'black',
+        radius: 3,
+        fillColor: 'yellow',
+        fillOpacity: 0.8
+    }).addTo(map);
+});
+
+// --- Tracés ---
+const pathLine = L.polyline(pathCoords, {color: 'blue', weight: 4, opacity: 0.7}).addTo(map);
+let actualPath = [];
+const actualLine = L.polyline(actualPath, {color: 'red', weight: 4, opacity: 0.9}).addTo(map);
+
+// Marqueur de position du robot (flèche rotative)
+const robotIcon = L.icon({
+    iconUrl: "{{ url_for('static', filename='arrow.png') }}",
+    iconSize: [40, 40],
+    iconAnchor: [20, 20]
+});
+const marker = L.marker(pathCoords[0], {
+    icon: robotIcon,
+    rotationAngle: 0,
+    rotationOrigin: 'center center'
+}).addTo(map);
+
+// --- Mettre à jour la position et l'orientation du robot ---
+function updatePosition() {
+    fetch('/robot_position')
+        .then(response => response.json())
+        .then(data => {
+            const lat = data.y;
+            const lon = data.x;
+            const yaw = data.yaw || 0;
+            marker.setLatLng([lat, lon]);
+            marker.setRotationAngle(yaw);
+
+            // Affichage des coordonnées en temps réel
+            document.getElementById('coords-value').textContent =
+                lat.toFixed(7) + ", " + lon.toFixed(7);
+
+            // Affichage de l'orientation
+            document.getElementById('yaw-value').textContent = Math.round(yaw) + "°";
+            document.getElementById('compass-arrow').style.transform = `rotate(${yaw}deg)`;
+
+            // Ajouter le point au chemin réel si différent du précédent
+            if (
+                actualPath.length === 0 ||
+                actualPath[actualPath.length-1][0] !== lat ||
+                actualPath[actualPath.length-1][1] !== lon
+            ) {
+                actualPath.push([lat, lon]);
+                actualLine.setLatLngs(actualPath);
+            }
+        });
+}
+setInterval(updatePosition, 1000);
+
+// --- Mettre à jour l'état du robot ---
+function updateState() {
+    fetch('/robot_state')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('state-mode').textContent = data.mode || "inconnu";
+            document.getElementById('state-battery').textContent = data.battery !== undefined ? data.battery : "...";
+            document.getElementById('state-status').textContent = data.status || "inconnu";
+        });
+}
+setInterval(updateState, 1000);
+
+// --- Variables pour le dessin du chemin ---
+let drawingPath = false;
+let newPathCoords = [];
+let newPathLine = null;
+
+// Boutons
+function toggleDrawing() {
+    drawingPath = !drawingPath;
+    document.getElementById('toggle-drawing').textContent = drawingPath ? "Arrêter le tracé" : "Activer le tracé";
+    document.getElementById('send-path').disabled = !drawingPath;
+    document.getElementById('clear-path').disabled = !drawingPath;
+}
+
+function sendPath() {
+    if (newPathCoords.length < 2) {
+        alert("Trace au moins deux points !");
+        return;
+    }
+    fetch('/set_path', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(newPathCoords)
+    })
+    .then(response => {
+        if (response.ok) {
+            alert("Chemin envoyé au robot !");
+        } else {
+            alert("Erreur lors de l'envoi du chemin.");
+        }
+    });
+    toggleDrawing();
+}
+
+function clearPath() {
+    newPathCoords = [];
+    if (newPathLine) {
+        map.removeLayer(newPathLine);
+        newPathLine = null;
+    }
+}
+
+// --- Clic sur la carte pour dessiner le chemin ---
+map.on('click', function(e) {
+    if (drawingPath) {
+        newPathCoords.push([e.latlng.lat, e.latlng.lng]);
+        if (newPathLine) {
+            newPathLine.setLatLngs(newPathCoords);
+        } else {
+            newPathLine = L.polyline(newPathCoords, {color: 'green', weight: 4, dashArray: '5,10'}).addTo(map);
+        }
+    }
+});
+
+// --- Joystick virtuel ---
+const joystick = nipplejs.create({
+    zone: document.getElementById('joystick-zone'),
+    mode: 'static',
+    position: {left: '50%', top: '50%'},
+    color: 'blue'
+});
+
+joystick.on('move', function (evt, data) {
+    if (data && data.direction) {
+        fetch('/joystick', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                angle: data.angle.degree,
+                distance: data.distance,
+                direction: data.direction.angle
+            })
+        });
+    }
+});
+joystick.on('end', function () {
+    fetch('/joystick', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({stop: true})
+    });
+});
+</script>
+{% endblock %}
