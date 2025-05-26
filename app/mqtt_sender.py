@@ -1,6 +1,6 @@
 import paho.mqtt.client as mqtt
 import json
-from .config import MQTT_BROKER, MQTT_PORT, MQTT_TOPIC
+from .app.config import MQTT_BROKER, MQTT_PORT, MQTT_TOPIC
 
 def send_command(command_name):
     client = mqtt.Client()
