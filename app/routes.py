@@ -66,11 +66,13 @@ def robot_state():
         return jsonify({"error": "État non disponible"}), 404
     return jsonify(last_state)
 
+
 # Ouvre la caméra ou le flux vidéo du robot (modifie l'URL/ID selon ton matériel)
 # Exemple pour caméra USB : cap = cv2.VideoCapture(0)
 # Exemple pour flux RTSP : cap = cv2.VideoCapture("rtsp://ip_du_robot/stream")
 cap = cv2.VideoCapture(0)  # À adapter à ton cas réel
 
+# Fonction pour générer des frames pour le flux vidéo
 def gen_frames():
     while True:
         success, frame = cap.read()
@@ -88,3 +90,15 @@ def gen_frames():
 @bp.route('/robot_video')
 def robot_video():
     return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+# Routes pour les commandes du robot
+@bp.route('/robot_stop', methods=['POST'])
+def robot_stop():
+    send_command('StopMove')  # ou la commande MQTT spécifique pour stopper
+    return jsonify({"status": "ok", "message": "Robot stoppé"})
+
+# Route pour démarrer le robot
+@bp.route('/robot_pause', methods=['POST'])
+def robot_pause():
+    send_command('Pause')  # remplace par la commande MQTT réelle pour pause si elle existe
+    return jsonify({"status": "ok", "message": "Robot en pause"})

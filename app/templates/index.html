@@ -5,86 +5,105 @@
 {% block content %}
 <h1>Contrôle du robot Go2</h1>
 
-<form method="post" id="command-form">
-    <label for="command">Choisissez une commande :</label>
-    <select name="command" id="command" required>
-        <option value="" disabled selected>-- Sélectionnez une commande --</option>
-        <option value="Damp">Damp</option>
-        <option value="BalanceStand">BalanceStand</option>
-        <option value="StopMove">StopMove</option>
-        <option value="StandUp">StandUp</option>
-        <option value="StandDown">StandDown</option>
-        <option value="RecoveryStand">RecoveryStand</option>
-        <option value="Euler">Euler</option>
-        <option value="Move">Move</option>
-        <option value="Sit">Sit</option>
-        <option value="RiseSit">RiseSit</option>
-        <option value="SwitchGait">SwitchGait</option>
-        <option value="Trigger">Trigger</option>
-        <option value="BodyHeight">BodyHeight</option>
-        <option value="FootRaiseHeight">FootRaiseHeight</option>
-        <option value="SpeedLevel">SpeedLevel</option>
-        <option value="Hello">Hello</option>
-        <option value="Stretch">Stretch</option>
-        <option value="TrajectoryFollow">TrajectoryFollow</option>
-        <option value="ContinuousGait">ContinuousGait</option>
-        <option value="Content">Content</option>
-        <option value="Wallow">Wallow</option>
-        <option value="Dance1">Dance1</option>
-        <option value="Dance2">Dance2</option>
-        <option value="GetBodyHeight">GetBodyHeight</option>
-        <option value="GetFootRaiseHeight">GetFootRaiseHeight</option>
-        <option value="GetSpeedLevel">GetSpeedLevel</option>
-        <option value="SwitchJoystick">SwitchJoystick</option>
-        <option value="Pose">Pose</option>
-        <option value="Scrape">Scrape</option>
-        <option value="FrontFlip">FrontFlip</option>
-        <option value="FrontJump">FrontJump</option>
-        <option value="FrontPounce">FrontPounce</option>
-        <option value="WiggleHips">WiggleHips</option>
-        <option value="GetState">GetState</option>
-        <option value="EconomicGait">EconomicGait</option>
-        <option value="FingerHeart">FingerHeart</option>
-    </select>
-    <button type="submit">Envoyer</button>
-</form>
+<section>
+    <form method="post" id="command-form">
+        <label for="command">Commande robot :</label>
+        <select name="command" id="command" required>
+            <option value="" disabled selected>-- Sélectionnez une commande --</option>
+            <option value="Damp">Damp</option>
+            <option value="BalanceStand">BalanceStand</option>
+            <option value="StopMove">StopMove</option>
+            <option value="StandUp">StandUp</option>
+            <option value="StandDown">StandDown</option>
+            <option value="RecoveryStand">RecoveryStand</option>
+            <option value="Euler">Euler</option>
+            <option value="Move">Move</option>
+            <option value="Sit">Sit</option>
+            <option value="RiseSit">RiseSit</option>
+            <option value="SwitchGait">SwitchGait</option>
+            <option value="Trigger">Trigger</option>
+            <option value="BodyHeight">BodyHeight</option>
+            <option value="FootRaiseHeight">FootRaiseHeight</option>
+            <option value="SpeedLevel">SpeedLevel</option>
+            <option value="Hello">Hello</option>
+            <option value="Stretch">Stretch</option>
+            <option value="TrajectoryFollow">TrajectoryFollow</option>
+            <option value="ContinuousGait">ContinuousGait</option>
+            <option value="Content">Content</option>
+            <option value="Wallow">Wallow</option>
+            <option value="Dance1">Dance1</option>
+            <option value="Dance2">Dance2</option>
+            <option value="GetBodyHeight">GetBodyHeight</option>
+            <option value="GetFootRaiseHeight">GetFootRaiseHeight</option>
+            <option value="GetSpeedLevel">GetSpeedLevel</option>
+            <option value="SwitchJoystick">SwitchJoystick</option>
+            <option value="Pose">Pose</option>
+            <option value="Scrape">Scrape</option>
+            <option value="FrontFlip">FrontFlip</option>
+            <option value="FrontJump">FrontJump</option>
+            <option value="FrontPounce">FrontPounce</option>
+            <option value="WiggleHips">WiggleHips</option>
+            <option value="GetState">GetState</option>
+            <option value="EconomicGait">EconomicGait</option>
+            <option value="FingerHeart">FingerHeart</option>
+        </select>
+        <button type="submit">Envoyer</button>
+    </form>
+    <div class="status-grid">
+        <div class="status-item">
+            <b>Position</b><br>
+            <span id="coords-value">Chargement...</span>
+        </div>
+        <div class="status-item">
+            <b>Orientation</b><br>
+            <span id="yaw-value">0°</span>
+            <img id="compass-arrow" src="{{ url_for('static', filename='arrow.png') }}" style="width:24px;margin-left:5px;vertical-align:middle;transition:transform 0.3s;"/>
+        </div>
+        <div class="status-item">
+            <b>Vitesse</b><br>
+            <span id="speed-value">0.00</span> m/s
+        </div>
+        <div class="status-item">
+            <b>Distance</b><br>
+            <span id="distance-value">0.00</span> <span id="distance-unit">m</span>
+            <button onclick="resetDistance()" style="margin-left:6px;padding:2px 8px;font-size:0.9em;">↺</button>
+        </div>
+        <div class="status-item">
+            <b>État</b><br>
+            <span id="state-mode">...</span>
+        </div>
+        <div class="status-item">
+            <b>Batterie</b><br>
+            <span id="state-battery">...</span> %
+        </div>
+        <div class="status-item">
+            <b>Statut</b><br>
+            <span id="state-status">...</span>
+        </div>
+    </div>
+</section>
 
-<h2>Joystick virtuel</h2>
-<div id="joystick-zone"></div>
+<section>
+    <div id="joystick-zone"></div>
+    <div style="margin: 1em 0;">
+        <button onclick="robotStop()" style="background:#e74c3c;">STOP</button>
+        <button onclick="robotPause()" style="background:#f39c12;">Pause</button>
+    </div>
+</section>
 
-<h2>Localisation du robot</h2>
-<div id="robot-coords" style="margin-bottom: 10px; font-weight: bold;">
-    Position du robot : <span id="coords-value">Chargement...</span>
-</div>
-<div id="robot-orientation" style="margin-bottom:10px; display: flex; align-items: center;">
-    Orientation : <span id="yaw-value" style="margin: 0 10px;">0°</span>
-    <span style="width:40px;height:40px;display:inline-block;position:relative;">
-        <img id="compass-arrow" src="{{ url_for('static', filename='arrow.png') }}"
-             style="width:40px;height:40px;transition:transform 0.3s;position:absolute;top:0;left:0;"/>
-    </span>
-</div>
-<div id="robot-speed" style="margin-bottom: 10px; font-weight: bold;">
-    Vitesse instantanée : <span id="speed-value">0.00</span> m/s
-</div>
-<div id="robot-distance" style="margin-bottom: 10px; font-weight: bold;">
-    Distance parcourue : <span id="distance-value">0.00</span>
-    <span id="distance-unit">m</span>
-    <button onclick="resetDistance()" style="margin-left:10px;">Réinitialiser distance</button>
-</div>
-<div id="robot-state" style="margin-bottom: 10px; font-weight: bold;">
-    État : <span id="state-mode">...</span> |
-    Batterie : <span id="state-battery">...</span> % |
-    Statut : <span id="state-status">...</span>
-</div>
-<div style="margin-bottom: 10px;">
-    <button id="toggle-drawing" onclick="toggleDrawing()">Activer le tracé</button>
-    <button id="send-path" onclick="sendPath()" disabled>Envoyer le chemin au robot</button>
-    <button id="clear-path" onclick="clearPath()" disabled>Effacer le tracé</button>
-</div>
-<div id="map"></div>
+<section>
+    <div style="margin-bottom: 10px;">
+        <button id="toggle-drawing" onclick="toggleDrawing()">Activer le tracé</button>
+        <button id="send-path" onclick="sendPath()" disabled>Envoyer le chemin</button>
+        <button id="clear-path" onclick="clearPath()" disabled>Effacer le tracé</button>
+    </div>
+    <div id="map"></div>
+</section>
 
-<h2>Flux vidéo du robot</h2>
-<img id="robot-video" src="{{ url_for('api.robot_video') }}" style="width: 480px; max-width: 100%; border-radius: 10px; border:1px solid #ccc;"/>
+<section class="video-block">
+    <h2>Flux vidéo du robot</h2>
+    <img id="robot-video" src="{{ url_for('api.robot_video') }}" alt="Flux vidéo du robot Go2"/>
+</section>
 
 {% if ack_info %}
     <div class="alert alert-success">
@@ -97,7 +116,7 @@
 <script>
 // --- Fonctions de calcul de distance ---
 function calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371000; // Rayon de la Terre en mètres
+    const R = 6371000;
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
     const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -337,5 +356,17 @@ joystick.on('end', function () {
         body: JSON.stringify({stop: true})
     });
 });
+
+// --- STOP/PAUSE ---
+function robotStop() {
+    fetch('/robot_stop', {method: 'POST'})
+        .then(response => response.json())
+        .then(data => alert(data.message));
+}
+function robotPause() {
+    fetch('/robot_pause', {method: 'POST'})
+        .then(response => response.json())
+        .then(data => alert(data.message));
+}
 </script>
 {% endblock %}
