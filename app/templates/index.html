@@ -63,6 +63,14 @@
              style="width:40px;height:40px;transition:transform 0.3s;position:absolute;top:0;left:0;"/>
     </span>
 </div>
+<div id="robot-speed" style="margin-bottom: 10px; font-weight: bold;">
+    Vitesse instantanée : <span id="speed-value">0.00</span> m/s
+</div>
+<div id="robot-distance" style="margin-bottom: 10px; font-weight: bold;">
+    Distance parcourue : <span id="distance-value">0.00</span>
+    <span id="distance-unit">m</span>
+    <button onclick="resetDistance()" style="margin-left:10px;">Réinitialiser distance</button>
+</div>
 <div id="robot-state" style="margin-bottom: 10px; font-weight: bold;">
     État : <span id="state-mode">...</span> |
     Batterie : <span id="state-battery">...</span> % |
@@ -75,6 +83,9 @@
 </div>
 <div id="map"></div>
 
+<h2>Flux vidéo du robot</h2>
+<img id="robot-video" src="{{ url_for('api.robot_video') }}" style="width: 480px; max-width: 100%; border-radius: 10px; border:1px solid #ccc;"/>
+
 {% if ack_info %}
     <div class="alert alert-success">
         {{ ack_info }}
@@ -84,6 +95,44 @@
 
 {% block scripts %}
 <script>
+// --- Fonctions de calcul de distance ---
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371000; // Rayon de la Terre en mètres
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+function calculateTotalDistance(path) {
+    let total = 0;
+    for (let i = 1; i < path.length; i++) {
+        total += calculateDistance(
+            path[i-1][0], path[i-1][1],
+            path[i][0], path[i][1]
+        );
+    }
+    return total;
+}
+function displayDistance(total) {
+    if (total > 1000) {
+        document.getElementById('distance-value').textContent = (total/1000).toFixed(2);
+        document.getElementById('distance-unit').textContent = "km";
+    } else {
+        document.getElementById('distance-value').textContent = total.toFixed(2);
+        document.getElementById('distance-unit').textContent = "m";
+    }
+}
+function resetDistance() {
+    if (actualPath.length > 0) {
+        actualPath = [actualPath[actualPath.length-1]];
+        actualLine.setLatLngs(actualPath);
+    }
+    displayDistance(0);
+}
+
 // --- Initialisation de la carte Leaflet ---
 const pathCoords = [
     [48.777164396, 2.375696799],
@@ -101,19 +150,14 @@ const pathCoords = [
     [48.777101311, 2.375851686],
 ];
 
-// Initialiser la carte sur le premier point du chemin
 const map = L.map('map').setView(pathCoords[0], 19);
-
-// Ajouter le fond de carte OpenStreetMap
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 22,
 }).addTo(map);
 
-// Créer un LatLngBounds pour englober tous les points
 let bounds = new L.LatLngBounds(pathCoords);
 map.fitBounds(bounds);
 
-// --- Affichage des points du chemin ---
 pathCoords.forEach(coord => {
     L.circleMarker([coord[0], coord[1]], {
         color: 'black',
@@ -123,12 +167,10 @@ pathCoords.forEach(coord => {
     }).addTo(map);
 });
 
-// --- Tracés ---
 const pathLine = L.polyline(pathCoords, {color: 'blue', weight: 4, opacity: 0.7}).addTo(map);
 let actualPath = [];
 const actualLine = L.polyline(actualPath, {color: 'red', weight: 4, opacity: 0.9}).addTo(map);
 
-// Marqueur de position du robot (flèche rotative)
 const robotIcon = L.icon({
     iconUrl: "{{ url_for('static', filename='arrow.png') }}",
     iconSize: [40, 40],
@@ -140,7 +182,12 @@ const marker = L.marker(pathCoords[0], {
     rotationOrigin: 'center center'
 }).addTo(map);
 
-// --- Mettre à jour la position et l'orientation du robot ---
+// --- Variables pour la vitesse ---
+let lastLat = null;
+let lastLon = null;
+let lastTime = null;
+
+// --- Mettre à jour la position, l'orientation, la vitesse et la distance ---
 function updatePosition() {
     fetch('/robot_position')
         .then(response => response.json())
@@ -151,13 +198,34 @@ function updatePosition() {
             marker.setLatLng([lat, lon]);
             marker.setRotationAngle(yaw);
 
-            // Affichage des coordonnées en temps réel
             document.getElementById('coords-value').textContent =
                 lat.toFixed(7) + ", " + lon.toFixed(7);
-
-            // Affichage de l'orientation
             document.getElementById('yaw-value').textContent = Math.round(yaw) + "°";
             document.getElementById('compass-arrow').style.transform = `rotate(${yaw}deg)`;
+
+            // Vitesse : récupérée du backend si disponible, sinon calculée côté front
+            let speed = 0.0;
+            if (data.speed !== undefined) {
+                speed = data.speed;
+            } else {
+                const now = Date.now();
+                if (lastLat !== null && lastLon !== null && lastTime !== null) {
+                    const R = 6371000;
+                    const dLat = (lat - lastLat) * Math.PI / 180;
+                    const dLon = (lon - lastLon) * Math.PI / 180;
+                    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                              Math.cos(lastLat * Math.PI / 180) * Math.cos(lat * Math.PI / 180) *
+                              Math.sin(dLon/2) * Math.sin(dLon/2);
+                    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                    const distance = R * c;
+                    const dt = (now - lastTime) / 1000;
+                    speed = dt > 0 ? distance / dt : 0;
+                }
+                lastLat = lat;
+                lastLon = lon;
+                lastTime = Date.now();
+            }
+            document.getElementById('speed-value').textContent = speed.toFixed(2);
 
             // Ajouter le point au chemin réel si différent du précédent
             if (
@@ -167,6 +235,12 @@ function updatePosition() {
             ) {
                 actualPath.push([lat, lon]);
                 actualLine.setLatLngs(actualPath);
+
+                // Calcul et affichage de la distance
+                if (actualPath.length > 1) {
+                    const totalDistance = calculateTotalDistance(actualPath);
+                    displayDistance(totalDistance);
+                }
             }
         });
 }
@@ -189,7 +263,6 @@ let drawingPath = false;
 let newPathCoords = [];
 let newPathLine = null;
 
-// Boutons
 function toggleDrawing() {
     drawingPath = !drawingPath;
     document.getElementById('toggle-drawing').textContent = drawingPath ? "Arrêter le tracé" : "Activer le tracé";
@@ -225,7 +298,6 @@ function clearPath() {
     }
 }
 
-// --- Clic sur la carte pour dessiner le chemin ---
 map.on('click', function(e) {
     if (drawingPath) {
         newPathCoords.push([e.latlng.lat, e.latlng.lng]);

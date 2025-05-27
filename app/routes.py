@@ -1,8 +1,9 @@
-from flask import Blueprint, request, render_template, flash, redirect, url_for, jsonify
+from flask import Blueprint, request, render_template, flash, redirect, url_for, jsonify, Response
 from .mqtt_sender import send_command
 from .mqtt_ack_listener import last_ack
 from .mqtt_position_listener import last_position
 from .mqtt_state_listener import last_state
+import cv2
 
 # -*- coding: utf-8 -*-
 """
@@ -64,3 +65,26 @@ def robot_state():
     if not last_state:
         return jsonify({"error": "État non disponible"}), 404
     return jsonify(last_state)
+
+# Ouvre la caméra ou le flux vidéo du robot (modifie l'URL/ID selon ton matériel)
+# Exemple pour caméra USB : cap = cv2.VideoCapture(0)
+# Exemple pour flux RTSP : cap = cv2.VideoCapture("rtsp://ip_du_robot/stream")
+cap = cv2.VideoCapture(0)  # À adapter à ton cas réel
+
+def gen_frames():
+    while True:
+        success, frame = cap.read()
+        if not success:
+            break
+        else:
+            # Encode l'image en JPEG
+            ret, buffer = cv2.imencode('.jpg', frame)
+            frame = buffer.tobytes()
+            # MJPEG : multipart/x-mixed-replace
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+
+# Route pour afficher le flux vidéo du robot
+@bp.route('/robot_video')
+def robot_video():
+    return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')

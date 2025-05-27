@@ -3,7 +3,7 @@ import paho.mqtt.client as mqtt
 import json
 
 # Variable globale pour stocker la dernière position et orientation reçues
-last_position = {"x": 2.37556, "y": 48.77713, "yaw": 0}
+last_position = {"x": 2.37556, "y": 48.77713, "yaw": 0, "speed": 0.0}
 
 def on_message(client, userdata, msg):
     try:
@@ -11,6 +11,7 @@ def on_message(client, userdata, msg):
         print(f"Position MQTT reçue : {payload}")
         last_position["x"] = payload.get("x", 0)
         last_position["y"] = payload.get("y", 0)
+        last_position["speed"] = payload.get("speed", 0.0)
         # Ajoute la gestion de l’orientation
         if "yaw" in payload:
             last_position["yaw"] = payload.get("yaw", 0)
