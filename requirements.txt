@@ -1,4 +1,3 @@
 flask
 paho-mqtt
-json
-threading
+opencv-python
