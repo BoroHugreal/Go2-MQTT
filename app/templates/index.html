@@ -4,12 +4,10 @@
     <meta charset="UTF-8">
     <title>Go2 Robot Control</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css" />
-    <link rel="stylesheet" href="https://unpkg.com/nipplejs@0.9.0/dist/nipplejs.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.9.0/nipplejs.min.js"></script>
 </head>
 <body>
     <header>
@@ -26,22 +24,49 @@
             <span id="header-battery">🔋 <span id="header-battery-val">...</span>%</span>
         </div>
     </header>
-
     <nav>
         <ul>
+            <li><a href="#intro">Introduction</a></li>
             <li class="active"><a href="#control">Contrôle</a></li>
             <li><a href="#map-section">Carte</a></li>
             <li><a href="#video">Vidéo</a></li>
+            <li><a href="#doc-archi">Documentation</a></li>
         </ul>
     </nav>
-
     <main>
         <div class="container">
+            <!-- Introduction et documentation -->
+            <section class="panel panel-intro" id="intro">
+                <h1 id="intro">Bienvenue sur le panneau de contrôle du robot Go2</h1>
+                <p>
+                    Cette interface web vous permet de piloter et surveiller en temps réel un robot quadrupède <b>Go2 (Unitree Robotics)</b>.<br>
+                    <ul>
+                        <li><b>Envoyer des commandes</b> prédéfinies ou personnalisées au robot</li>
+                        <li><b>Contrôler la direction</b> grâce au joystick ou au clavier</li>
+                        <li><b>Visualiser sa position, orientation, vitesse et batterie</b> en direct</li>
+                        <li><b>Tracer et envoyer un chemin</b> sur la carte</li>
+                        <li><b>Voir le flux vidéo</b> embarqué</li>
+                    </ul>
+                    <em>Utilisez le menu à gauche ou faites défiler pour explorer toutes les fonctionnalités.</em>
+                </p>
+                <p class="section-desc" style="margin-top:1em;font-size:0.95em;color:#888;">
+                    <b>Architecture technique :</b> L’API web s’appuie sur Flask (Python), MQTT pour la communication temps réel, Leaflet pour la cartographie, et NippleJS pour le joystick.<br>
+                    <a href="#doc-archi" style="color:var(--accent);text-decoration:underline;">Voir le schéma d’architecture</a>
+                </p>
+            </section>
+
+            <!-- Commandes rapides -->
             <section class="panel panel-control" id="control">
                 <h2>Commandes rapides</h2>
+                <p class="section-desc">
+                    Sélectionnez une commande dans la liste pour l’envoyer instantanément au robot Go2.<br>
+                    Ces commandes couvrent les postures, la locomotion, les danses, et divers modes spéciaux.<br>
+                    <em>Le robot confirme chaque commande reçue via MQTT.</em>
+                </p>
                 <form method="post" id="command-form">
                     <select name="command" id="command" required>
                         <option value="" disabled selected>-- Sélectionnez une commande --</option>
+                        <!-- ... toutes les options ... -->
                         <option value="Damp">Damp</option>
                         <option value="BalanceStand">BalanceStand</option>
                         <option value="StopMove">StopMove</option>
@@ -81,39 +106,51 @@
                     </select>
                     <button type="submit">Envoyer</button>
                 </form>
-
+                <p class="section-desc">
+                    <b>Tableau de bord temps réel :</b> affiche la position GPS, l’orientation (boussole), la vitesse instantanée, la distance parcourue, l’état courant, le niveau de batterie et le statut général du robot.
+                </p>
                 <div class="status-grid">
                     <div class="status-item">
                         <span class="label">Position</span>
-                        <span id="coords-value">48.777164, 2.375697</span>
+                        <span id="coords-value">--</span>
                     </div>
                     <div class="status-item">
                         <span class="label">Orientation</span>
-                        <span id="yaw-value">45°</span>
-                        <span id="compass-arrow" class="compass-arrow" style="transform: rotate(45deg);">🧭</span>
+                        <span id="yaw-value">0°</span>
+                        <span id="compass-arrow" class="compass-arrow" style="transform: rotate(0deg);">🧭</span>
                     </div>
                     <div class="status-item">
                         <span class="label">Vitesse</span>
-                        <span id="speed-value">1.23</span> m/s
+                        <span id="speed-value">0.00</span> m/s
                     </div>
                     <div class="status-item">
                         <span class="label">Distance</span>
-                        <span id="distance-value">127.5</span> <span id="distance-unit">m</span>
+                        <span id="distance-value">0.00</span> <span id="distance-unit">m</span>
                         <button onclick="resetDistance()" class="reset-btn" title="Réinitialiser">↺</button>
                     </div>
                     <div class="status-item">
                         <span class="label">État</span>
-                        <span id="state-mode">En mouvement</span>
+                        <span id="state-mode">--</span>
                     </div>
                     <div class="status-item">
                         <span class="label">Batterie</span>
-                        <span id="state-battery">87</span> %
+                        <span id="state-battery">--</span> %
+                    </div>
+                    <div class="status-item">
+                        <span class="label">Statut</span>
+                        <span id="state-status">--</span>
                     </div>
                 </div>
             </section>
 
+            <!-- Contrôles directionnels -->
             <section class="panel">
                 <h2>Contrôles directionnels</h2>
+                <p class="section-desc">
+                    <b>Joystick :</b> Faites glisser le joystick pour orienter le robot en douceur.<br>
+                    <b>Clavier :</b> Utilisez les touches <b>↑</b> et <b>↓</b> pour avancer/reculer, <b>←</b> et <b>→</b> pour tourner.<br>
+                    <em>Les boutons STOP/PAUSE permettent d’arrêter ou de mettre en pause le robot immédiatement.</em>
+                </p>
                 <div class="control-section">
                     <div class="joystick-container">
                         <div class="joystick-label">Joystick directionnel</div>
@@ -139,8 +176,14 @@
                 </div>
             </section>
 
+            <!-- Carte & Trajet -->
             <section class="panel panel-map" id="map-section">
                 <h2>Carte & Trajet</h2>
+                <p class="section-desc">
+                    Visualisez la position du robot sur la carte en temps réel.<br>
+                    Tracez un chemin à la souris, puis envoyez-le au robot pour une navigation autonome.<br>
+                    <em>Le tracé rouge montre le parcours réel du robot, le tracé vert le chemin programmé.</em>
+                </p>
                 <div class="map-actions">
                     <button id="toggle-drawing" onclick="toggleDrawing()">Activer le tracé</button>
                     <button id="send-path" onclick="sendPath()" disabled>Envoyer le chemin</button>
@@ -149,9 +192,29 @@
                 <div id="map"></div>
             </section>
 
+            <!-- Vidéo -->
             <section class="panel panel-video" id="video">
                 <h2>Flux vidéo du robot</h2>
+                <p class="section-desc">
+                    Suivez le flux vidéo embarqué du robot Go2 pour surveiller son environnement et ses déplacements en direct.<br>
+                    <em>Le flux est transmis en MJPEG ou HLS selon la configuration matérielle.</em>
+                </p>
                 <img id="robot-video" src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='480' height='360' viewBox='0 0 480 360'><rect width='100%' height='100%' fill='%23000'/><text x='50%' y='50%' text-anchor='middle' fill='white' font-size='24'>Flux vidéo en cours...</text></svg>" alt="Flux vidéo du robot Go2"/>
+            </section>
+
+            <!-- Architecture technique -->
+            <section id="doc-archi" class="panel panel-archi">
+                <h2 id="doc-archi">Architecture technique de l’API Web Go2</h2>
+                <p>
+                    <b>Explications :</b><br>
+                    <ul>
+                        <li><b>Flask</b> sert l’interface web et fait le lien entre l’utilisateur et le robot via MQTT.</li>
+                        <li><b>MQTT</b> assure la communication temps réel : commandes, retours d’état, accusés de réception.</li>
+                        <li><b>Leaflet</b> affiche la carte et le tracé du robot.</li>
+                        <li><b>NippleJS</b> gère le joystick virtuel pour la direction.</li>
+                        <li><b>OpenCV</b> ou un flux IP fournit la vidéo embarquée.</li>
+                    </ul>
+                </p>
             </section>
         </div>
     </main>
@@ -332,6 +395,19 @@
             document.getElementById('header-battery-val').textContent = battery;
             document.getElementById('speed-value').textContent = speed;
         }, 3000);
+
+        document.querySelectorAll('nav a[href^="#"]').forEach(link => {
+            link.addEventListener('click', function(e) {
+                const targetId = this.getAttribute('href').replace('#', '');
+                const target = document.getElementById(targetId);
+                if (target) {
+                    e.preventDefault();
+                    target.scrollIntoView({ behavior: 'smooth' });
+                    setTimeout(() => target.focus(), 600); // met le focus après le scroll
+                }
+            });
+        });
+
     </script>
 </body>
 </html>
