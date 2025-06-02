@@ -1,372 +1,337 @@
-{% extends 'base.html' %}
-
-{% block title %}Go2 Robot Control{% endblock %}
-
-{% block content %}
-<h1>Contrôle du robot Go2</h1>
-
-<section>
-    <form method="post" id="command-form">
-        <label for="command">Commande robot :</label>
-        <select name="command" id="command" required>
-            <option value="" disabled selected>-- Sélectionnez une commande --</option>
-            <option value="Damp">Damp</option>
-            <option value="BalanceStand">BalanceStand</option>
-            <option value="StopMove">StopMove</option>
-            <option value="StandUp">StandUp</option>
-            <option value="StandDown">StandDown</option>
-            <option value="RecoveryStand">RecoveryStand</option>
-            <option value="Euler">Euler</option>
-            <option value="Move">Move</option>
-            <option value="Sit">Sit</option>
-            <option value="RiseSit">RiseSit</option>
-            <option value="SwitchGait">SwitchGait</option>
-            <option value="Trigger">Trigger</option>
-            <option value="BodyHeight">BodyHeight</option>
-            <option value="FootRaiseHeight">FootRaiseHeight</option>
-            <option value="SpeedLevel">SpeedLevel</option>
-            <option value="Hello">Hello</option>
-            <option value="Stretch">Stretch</option>
-            <option value="TrajectoryFollow">TrajectoryFollow</option>
-            <option value="ContinuousGait">ContinuousGait</option>
-            <option value="Content">Content</option>
-            <option value="Wallow">Wallow</option>
-            <option value="Dance1">Dance1</option>
-            <option value="Dance2">Dance2</option>
-            <option value="GetBodyHeight">GetBodyHeight</option>
-            <option value="GetFootRaiseHeight">GetFootRaiseHeight</option>
-            <option value="GetSpeedLevel">GetSpeedLevel</option>
-            <option value="SwitchJoystick">SwitchJoystick</option>
-            <option value="Pose">Pose</option>
-            <option value="Scrape">Scrape</option>
-            <option value="FrontFlip">FrontFlip</option>
-            <option value="FrontJump">FrontJump</option>
-            <option value="FrontPounce">FrontPounce</option>
-            <option value="WiggleHips">WiggleHips</option>
-            <option value="GetState">GetState</option>
-            <option value="EconomicGait">EconomicGait</option>
-            <option value="FingerHeart">FingerHeart</option>
-        </select>
-        <button type="submit">Envoyer</button>
-    </form>
-    <div class="status-grid">
-        <div class="status-item">
-            <b>Position</b><br>
-            <span id="coords-value">Chargement...</span>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Go2 Robot Control</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css" />
+    <link rel="stylesheet" href="https://unpkg.com/nipplejs@0.9.0/dist/nipplejs.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+</head>
+<body>
+    <header>
+        <div class="brand">
+            <div class="logo">🤖</div>
+            <span>Go2 Control Panel</span>
         </div>
-        <div class="status-item">
-            <b>Orientation</b><br>
-            <span id="yaw-value">0°</span>
-            <img id="compass-arrow" src="{{ url_for('static', filename='arrow.png') }}" style="width:24px;margin-left:5px;vertical-align:middle;transition:transform 0.3s;"/>
+        <div class="theme-switch">
+            <input type="checkbox" id="theme-toggle" />
+            <label for="theme-toggle" class="slider"></label>
         </div>
-        <div class="status-item">
-            <b>Vitesse</b><br>
-            <span id="speed-value">0.00</span> m/s
+        <div class="robot-status-header">
+            <span id="header-state">État : <span id="header-state-val">...</span></span>
+            <span id="header-battery">🔋 <span id="header-battery-val">...</span>%</span>
         </div>
-        <div class="status-item">
-            <b>Distance</b><br>
-            <span id="distance-value">0.00</span> <span id="distance-unit">m</span>
-            <button onclick="resetDistance()" style="margin-left:6px;padding:2px 8px;font-size:0.9em;">↺</button>
+    </header>
+
+    <nav>
+        <ul>
+            <li class="active"><a href="#control">Contrôle</a></li>
+            <li><a href="#map-section">Carte</a></li>
+            <li><a href="#video">Vidéo</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <div class="container">
+            <section class="panel panel-control" id="control">
+                <h2>Commandes rapides</h2>
+                <form method="post" id="command-form">
+                    <select name="command" id="command" required>
+                        <option value="" disabled selected>-- Sélectionnez une commande --</option>
+                        <option value="Damp">Damp</option>
+                        <option value="BalanceStand">BalanceStand</option>
+                        <option value="StopMove">StopMove</option>
+                        <option value="StandUp">StandUp</option>
+                        <option value="StandDown">StandDown</option>
+                        <option value="RecoveryStand">RecoveryStand</option>
+                        <option value="Euler">Euler</option>
+                        <option value="Move">Move</option>
+                        <option value="Sit">Sit</option>
+                        <option value="RiseSit">RiseSit</option>
+                        <option value="SwitchGait">SwitchGait</option>
+                        <option value="Trigger">Trigger</option>
+                        <option value="BodyHeight">BodyHeight</option>
+                        <option value="FootRaiseHeight">FootRaiseHeight</option>
+                        <option value="SpeedLevel">SpeedLevel</option>
+                        <option value="Hello">Hello</option>
+                        <option value="Stretch">Stretch</option>
+                        <option value="TrajectoryFollow">TrajectoryFollow</option>
+                        <option value="ContinuousGait">ContinuousGait</option>
+                        <option value="Content">Content</option>
+                        <option value="Wallow">Wallow</option>
+                        <option value="Dance1">Dance1</option>
+                        <option value="Dance2">Dance2</option>
+                        <option value="GetBodyHeight">GetBodyHeight</option>
+                        <option value="GetFootRaiseHeight">GetFootRaiseHeight</option>
+                        <option value="GetSpeedLevel">GetSpeedLevel</option>
+                        <option value="SwitchJoystick">SwitchJoystick</option>
+                        <option value="Pose">Pose</option>
+                        <option value="Scrape">Scrape</option>
+                        <option value="FrontFlip">FrontFlip</option>
+                        <option value="FrontJump">FrontJump</option>
+                        <option value="FrontPounce">FrontPounce</option>
+                        <option value="WiggleHips">WiggleHips</option>
+                        <option value="GetState">GetState</option>
+                        <option value="EconomicGait">EconomicGait</option>
+                        <option value="FingerHeart">FingerHeart</option>
+                    </select>
+                    <button type="submit">Envoyer</button>
+                </form>
+
+                <div class="status-grid">
+                    <div class="status-item">
+                        <span class="label">Position</span>
+                        <span id="coords-value">48.777164, 2.375697</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="label">Orientation</span>
+                        <span id="yaw-value">45°</span>
+                        <span id="compass-arrow" class="compass-arrow" style="transform: rotate(45deg);">🧭</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="label">Vitesse</span>
+                        <span id="speed-value">1.23</span> m/s
+                    </div>
+                    <div class="status-item">
+                        <span class="label">Distance</span>
+                        <span id="distance-value">127.5</span> <span id="distance-unit">m</span>
+                        <button onclick="resetDistance()" class="reset-btn" title="Réinitialiser">↺</button>
+                    </div>
+                    <div class="status-item">
+                        <span class="label">État</span>
+                        <span id="state-mode">En mouvement</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="label">Batterie</span>
+                        <span id="state-battery">87</span> %
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel">
+                <h2>Contrôles directionnels</h2>
+                <div class="control-section">
+                    <div class="joystick-container">
+                        <div class="joystick-label">Joystick directionnel</div>
+                        <div id="joystick-direction"></div>
+                        <div class="hint-text">Glissez pour contrôler la direction</div>
+                    </div>
+                    
+                    <div class="keyboard-controls">
+                        <div class="keyboard-label">Contrôles clavier</div>
+                        <div class="arrow-grid">
+                            <div class="arrow-key up">↑</div>
+                            <div class="arrow-key left">←</div>
+                            <div class="arrow-key down">↓</div>
+                            <div class="arrow-key right">→</div>
+                        </div>
+                        <div class="hint-text">Utilisez les flèches pour avancer/reculer/tourner</div>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn-action btn-stop" onclick="robotStop()">STOP</button>
+                    <button class="btn-action btn-pause" onclick="robotPause()">PAUSE</button>
+                </div>
+            </section>
+
+            <section class="panel panel-map" id="map-section">
+                <h2>Carte & Trajet</h2>
+                <div class="map-actions">
+                    <button id="toggle-drawing" onclick="toggleDrawing()">Activer le tracé</button>
+                    <button id="send-path" onclick="sendPath()" disabled>Envoyer le chemin</button>
+                    <button id="clear-path" onclick="clearPath()" disabled>Effacer le tracé</button>
+                </div>
+                <div id="map"></div>
+            </section>
+
+            <section class="panel panel-video" id="video">
+                <h2>Flux vidéo du robot</h2>
+                <img id="robot-video" src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='480' height='360' viewBox='0 0 480 360'><rect width='100%' height='100%' fill='%23000'/><text x='50%' y='50%' text-anchor='middle' fill='white' font-size='24'>Flux vidéo en cours...</text></svg>" alt="Flux vidéo du robot Go2"/>
+            </section>
         </div>
-        <div class="status-item">
-            <b>État</b><br>
-            <span id="state-mode">...</span>
-        </div>
-        <div class="status-item">
-            <b>Batterie</b><br>
-            <span id="state-battery">...</span> %
-        </div>
-        <div class="status-item">
-            <b>Statut</b><br>
-            <span id="state-status">...</span>
-        </div>
-    </div>
-</section>
+    </main>
 
-<section>
-    <div id="joystick-zone"></div>
-    <div style="margin: 1em 0;">
-        <button onclick="robotStop()" style="background:#e74c3c;">STOP</button>
-        <button onclick="robotPause()" style="background:#f39c12;">Pause</button>
-    </div>
-</section>
-
-<section>
-    <div style="margin-bottom: 10px;">
-        <button id="toggle-drawing" onclick="toggleDrawing()">Activer le tracé</button>
-        <button id="send-path" onclick="sendPath()" disabled>Envoyer le chemin</button>
-        <button id="clear-path" onclick="clearPath()" disabled>Effacer le tracé</button>
-    </div>
-    <div id="map"></div>
-</section>
-
-<section class="video-block">
-    <h2>Flux vidéo du robot</h2>
-    <img id="robot-video" src="{{ url_for('api.robot_video') }}" alt="Flux vidéo du robot Go2"/>
-</section>
-
-{% if ack_info %}
-    <div class="alert alert-success">
-        {{ ack_info }}
-    </div>
-{% endif %}
-{% endblock %}
-
-{% block scripts %}
-<script>
-// --- Fonctions de calcul de distance ---
-function calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371000;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-              Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
-}
-function calculateTotalDistance(path) {
-    let total = 0;
-    for (let i = 1; i < path.length; i++) {
-        total += calculateDistance(
-            path[i-1][0], path[i-1][1],
-            path[i][0], path[i][1]
-        );
-    }
-    return total;
-}
-function displayDistance(total) {
-    if (total > 1000) {
-        document.getElementById('distance-value').textContent = (total/1000).toFixed(2);
-        document.getElementById('distance-unit').textContent = "km";
-    } else {
-        document.getElementById('distance-value').textContent = total.toFixed(2);
-        document.getElementById('distance-unit').textContent = "m";
-    }
-}
-function resetDistance() {
-    if (actualPath.length > 0) {
-        actualPath = [actualPath[actualPath.length-1]];
-        actualLine.setLatLngs(actualPath);
-    }
-    displayDistance(0);
-}
-
-// --- Initialisation de la carte Leaflet ---
-const pathCoords = [
-    [48.777164396, 2.375696799],
-    [48.777266135, 2.375488087],
-    [48.777245920, 2.375302510],
-    [48.777219946, 2.374943893],
-    [48.777252453, 2.375237042],
-    [48.777247827, 2.375732456],
-    [48.777378526, 2.375937183],
-    [48.777426862, 2.376234988],
-    [48.777376616, 2.376366631],
-    [48.777280918, 2.376314928],
-    [48.777184431, 2.376204572],
-    [48.777053307, 2.376061392],
-    [48.777101311, 2.375851686],
-];
-
-const map = L.map('map').setView(pathCoords[0], 19);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 22,
-}).addTo(map);
-
-let bounds = new L.LatLngBounds(pathCoords);
-map.fitBounds(bounds);
-
-pathCoords.forEach(coord => {
-    L.circleMarker([coord[0], coord[1]], {
-        color: 'black',
-        radius: 3,
-        fillColor: 'yellow',
-        fillOpacity: 0.8
-    }).addTo(map);
-});
-
-const pathLine = L.polyline(pathCoords, {color: 'blue', weight: 4, opacity: 0.7}).addTo(map);
-let actualPath = [];
-const actualLine = L.polyline(actualPath, {color: 'red', weight: 4, opacity: 0.9}).addTo(map);
-
-const robotIcon = L.icon({
-    iconUrl: "{{ url_for('static', filename='arrow.png') }}",
-    iconSize: [40, 40],
-    iconAnchor: [20, 20]
-});
-const marker = L.marker(pathCoords[0], {
-    icon: robotIcon,
-    rotationAngle: 0,
-    rotationOrigin: 'center center'
-}).addTo(map);
-
-// --- Variables pour la vitesse ---
-let lastLat = null;
-let lastLon = null;
-let lastTime = null;
-
-// --- Mettre à jour la position, l'orientation, la vitesse et la distance ---
-function updatePosition() {
-    fetch('/robot_position')
-        .then(response => response.json())
-        .then(data => {
-            const lat = data.y;
-            const lon = data.x;
-            const yaw = data.yaw || 0;
-            marker.setLatLng([lat, lon]);
-            marker.setRotationAngle(yaw);
-
-            document.getElementById('coords-value').textContent =
-                lat.toFixed(7) + ", " + lon.toFixed(7);
-            document.getElementById('yaw-value').textContent = Math.round(yaw) + "°";
-            document.getElementById('compass-arrow').style.transform = `rotate(${yaw}deg)`;
-
-            // Vitesse : récupérée du backend si disponible, sinon calculée côté front
-            let speed = 0.0;
-            if (data.speed !== undefined) {
-                speed = data.speed;
-            } else {
-                const now = Date.now();
-                if (lastLat !== null && lastLon !== null && lastTime !== null) {
-                    const R = 6371000;
-                    const dLat = (lat - lastLat) * Math.PI / 180;
-                    const dLon = (lon - lastLon) * Math.PI / 180;
-                    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                              Math.cos(lastLat * Math.PI / 180) * Math.cos(lat * Math.PI / 180) *
-                              Math.sin(dLon/2) * Math.sin(dLon/2);
-                    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-                    const distance = R * c;
-                    const dt = (now - lastTime) / 1000;
-                    speed = dt > 0 ? distance / dt : 0;
-                }
-                lastLat = lat;
-                lastLon = lon;
-                lastTime = Date.now();
+    <script src="https://cdn.jsdelivr.net/npm/nipplejs@0.9.0/dist/nipplejs.min.js"></script>
+    <script>
+        // Gestion du thème
+        document.addEventListener("DOMContentLoaded", function() {
+            const toggle = document.getElementById('theme-toggle');
+            const html = document.documentElement;
+            const savedTheme = localStorage.getItem('theme');
+            
+            if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                html.classList.add('dark');
+                toggle.checked = true;
             }
-            document.getElementById('speed-value').textContent = speed.toFixed(2);
-
-            // Ajouter le point au chemin réel si différent du précédent
-            if (
-                actualPath.length === 0 ||
-                actualPath[actualPath.length-1][0] !== lat ||
-                actualPath[actualPath.length-1][1] !== lon
-            ) {
-                actualPath.push([lat, lon]);
-                actualLine.setLatLngs(actualPath);
-
-                // Calcul et affichage de la distance
-                if (actualPath.length > 1) {
-                    const totalDistance = calculateTotalDistance(actualPath);
-                    displayDistance(totalDistance);
+            
+            toggle.addEventListener('change', function() {
+                if (this.checked) {
+                    html.classList.add('dark');
+                    localStorage.setItem('theme', 'dark');
+                } else {
+                    html.classList.remove('dark');
+                    localStorage.setItem('theme', 'light');
                 }
+            });
+        });
+
+        // Initialisation de la carte
+        const pathCoords = [
+            [48.777164396, 2.375696799],
+            [48.777266135, 2.375488087],
+            [48.777245920, 2.375302510],
+            [48.777219946, 2.374943893]
+        ];
+
+        const map = L.map('map').setView(pathCoords[0], 19);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 22,
+        }).addTo(map);
+
+        // Initialisation du joystick
+        const joystick = nipplejs.create({
+            zone: document.getElementById('joystick-direction'),
+            mode: 'static',
+            position: {left: '50%', top: '50%'},
+            color: '#007bff',
+            size: 140
+        });
+
+        joystick.on('move', function (evt, data) {
+            if (data && data.direction) {
+                console.log('Joystick:', data.angle.degree, data.direction.angle);
+                // Ici vous pouvez envoyer les commandes au robot
             }
         });
-}
-setInterval(updatePosition, 1000);
 
-// --- Mettre à jour l'état du robot ---
-function updateState() {
-    fetch('/robot_state')
-        .then(response => response.json())
-        .then(data => {
-            document.getElementById('state-mode').textContent = data.mode || "inconnu";
-            document.getElementById('state-battery').textContent = data.battery !== undefined ? data.battery : "...";
-            document.getElementById('state-status').textContent = data.status || "inconnu";
+        joystick.on('end', function () {
+            console.log('Joystick arrêté');
+            // Arrêter le mouvement du robot
         });
-}
-setInterval(updateState, 1000);
 
-// --- Variables pour le dessin du chemin ---
-let drawingPath = false;
-let newPathCoords = [];
-let newPathLine = null;
+        // Gestion des touches du clavier
+        let activeKeys = new Set();
 
-function toggleDrawing() {
-    drawingPath = !drawingPath;
-    document.getElementById('toggle-drawing').textContent = drawingPath ? "Arrêter le tracé" : "Activer le tracé";
-    document.getElementById('send-path').disabled = !drawingPath;
-    document.getElementById('clear-path').disabled = !drawingPath;
-}
+        document.addEventListener('keydown', function(e) {
+            if (e.repeat) return;
+            
+            const key = e.key;
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) {
+                e.preventDefault();
+                activeKeys.add(key);
+                
+                // Visual feedback
+                const keyMap = {
+                    'ArrowUp': 'up',
+                    'ArrowDown': 'down', 
+                    'ArrowLeft': 'left',
+                    'ArrowRight': 'right'
+                };
+                
+                const element = document.querySelector(`.arrow-key.${keyMap[key]}`);
+                if (element) {
+                    element.style.background = 'var(--accent)';
+                    element.style.color = 'white';
+                }
+                
+                console.log('Touche pressée:', key);
+                // Envoyer commande au robot
+            }
+        });
 
-function sendPath() {
-    if (newPathCoords.length < 2) {
-        alert("Trace au moins deux points !");
-        return;
-    }
-    fetch('/set_path', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(newPathCoords)
-    })
-    .then(response => {
-        if (response.ok) {
+        document.addEventListener('keyup', function(e) {
+            const key = e.key;
+            if (activeKeys.has(key)) {
+                activeKeys.delete(key);
+                
+                // Remove visual feedback
+                const keyMap = {
+                    'ArrowUp': 'up',
+                    'ArrowDown': 'down',
+                    'ArrowLeft': 'left', 
+                    'ArrowRight': 'right'
+                };
+                
+                const element = document.querySelector(`.arrow-key.${keyMap[key]}`);
+                if (element) {
+                    element.style.background = '';
+                    element.style.color = '';
+                }
+                
+                console.log('Touche relâchée:', key);
+                // Arrêter commande au robot
+            }
+        });
+
+        // Fonctions de contrôle
+        function robotStop() {
+            console.log('Robot STOP');
+            alert('Commande STOP envoyée au robot');
+        }
+
+        function robotPause() {
+            console.log('Robot PAUSE');
+            alert('Commande PAUSE envoyée au robot');
+        }
+
+        function resetDistance() {
+            document.getElementById('distance-value').textContent = '0.00';
+            document.getElementById('distance-unit').textContent = 'm';
+        }
+
+        // Variables pour le tracé de chemin
+        let drawingPath = false;
+        let newPathCoords = [];
+        let newPathLine = null;
+
+        function toggleDrawing() {
+            drawingPath = !drawingPath;
+            document.getElementById('toggle-drawing').textContent = drawingPath ? "Arrêter le tracé" : "Activer le tracé";
+            document.getElementById('send-path').disabled = !drawingPath;
+            document.getElementById('clear-path').disabled = !drawingPath;
+        }
+
+        function sendPath() {
+            if (newPathCoords.length < 2) {
+                alert("Tracez au moins deux points !");
+                return;
+            }
+            console.log('Chemin envoyé:', newPathCoords);
             alert("Chemin envoyé au robot !");
-        } else {
-            alert("Erreur lors de l'envoi du chemin.");
+            toggleDrawing();
         }
-    });
-    toggleDrawing();
-}
 
-function clearPath() {
-    newPathCoords = [];
-    if (newPathLine) {
-        map.removeLayer(newPathLine);
-        newPathLine = null;
-    }
-}
-
-map.on('click', function(e) {
-    if (drawingPath) {
-        newPathCoords.push([e.latlng.lat, e.latlng.lng]);
-        if (newPathLine) {
-            newPathLine.setLatLngs(newPathCoords);
-        } else {
-            newPathLine = L.polyline(newPathCoords, {color: 'green', weight: 4, dashArray: '5,10'}).addTo(map);
+        function clearPath() {
+            newPathCoords = [];
+            if (newPathLine) {
+                map.removeLayer(newPathLine);
+                newPathLine = null;
+            }
         }
-    }
-});
 
-// --- Joystick virtuel ---
-const joystick = nipplejs.create({
-    zone: document.getElementById('joystick-zone'),
-    mode: 'static',
-    position: {left: '50%', top: '50%'},
-    color: 'blue'
-});
-
-joystick.on('move', function (evt, data) {
-    if (data && data.direction) {
-        fetch('/joystick', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                angle: data.angle.degree,
-                distance: data.distance,
-                direction: data.direction.angle
-            })
+        map.on('click', function(e) {
+            if (drawingPath) {
+                newPathCoords.push([e.latlng.lat, e.latlng.lng]);
+                if (newPathLine) {
+                    newPathLine.setLatLngs(newPathCoords);
+                } else {
+                    newPathLine = L.polyline(newPathCoords, {color: 'green', weight: 4, dashArray: '5,10'}).addTo(map);
+                }
+            }
         });
-    }
-});
-joystick.on('end', function () {
-    fetch('/joystick', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({stop: true})
-    });
-});
 
-// --- STOP/PAUSE ---
-function robotStop() {
-    fetch('/robot_stop', {method: 'POST'})
-        .then(response => response.json())
-        .then(data => alert(data.message));
-}
-function robotPause() {
-    fetch('/robot_pause', {method: 'POST'})
-        .then(response => response.json())
-        .then(data => alert(data.message));
-}
-</script>
-{% endblock %}
+        // Simulation de mise à jour des données
+        setInterval(function() {
+            const battery = Math.floor(Math.random() * 30) + 70;
+            const speed = (Math.random() * 2).toFixed(2);
+            document.getElementById('header-battery-val').textContent = battery;
+            document.getElementById('speed-value').textContent = speed;
+        }, 3000);
+    </script>
+</body>
+</html>

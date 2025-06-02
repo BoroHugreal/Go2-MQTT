@@ -28,16 +28,39 @@ def index():
         ack_info = f"Le robot a confirmé la commande : {last_ack['command']} (statut : {last_ack['status']})"
     return render_template('index.html', ack_info=ack_info)
 
-# Route pour envoyer une commande au robot
+# Route pour envoyer des commandes au robot
 @bp.route('/joystick', methods=['POST'])
 def joystick_control():
     data = request.get_json()
-    # Ici, traduire les données du joystick en commandes robot Go2
+    jtype = data.get('type')
     if data.get('stop'):
-        send_command('StopMove')
+        if jtype == 'direction' or jtype == 'turn':
+            send_command('StopTurn')
+        elif jtype == 'move':
+            send_command('StopMove')
+        else:
+            send_command('StopMove')
     else:
-        # Mapper angle/direction à une commande Move personnalisée si besoin
-        send_command('Move')
+        if jtype == 'direction':
+            send_command('Turn')
+        elif jtype == 'move':
+            key = data.get('key')
+            if key == 'forward':
+                send_command('Forward')
+            elif key == 'backward':
+                send_command('Backward')
+            else:
+                send_command('Move')
+        elif jtype == 'turn':
+            key = data.get('key')
+            if key == 'left':
+                send_command('TurnLeft')
+            elif key == 'right':
+                send_command('TurnRight')
+            else:
+                send_command('Turn')
+        else:
+            send_command('Move')
     return '', 204
 
 # Route pour définir un chemin pour le robot
