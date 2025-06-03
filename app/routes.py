@@ -1,18 +1,54 @@
-from flask import Blueprint, request, render_template, flash, redirect, url_for, jsonify, Response
+# app/routes.py
+# -*- coding: utf-8 -*-
+"""
+Routes Flask robustes, sécurisées et refactorisées pour contrôle robot.
+"""
+
+from flask import Blueprint, request, render_template, flash, redirect, url_for, jsonify, Response, abort
+from flask_wtf.csrf import CSRFProtect
 from .mqtt_sender import send_command
 from .mqtt_ack_listener import last_ack
 from .mqtt_position_listener import last_position
 from .mqtt_state_listener import last_state
 import cv2
+import threading
+import logging
 
-# -*- coding: utf-8 -*-
-"""
-Routes pour l'API de contrôle du robot Go2
-"""
-# app/routes.py
+# Initialisation CSRF, à activer dans l'app principale
+csrf = CSRFProtect()
+
 bp = Blueprint('api', __name__)
 
-# Route principale pour l'interface utilisateur
+# Logger
+logger = logging.getLogger(__name__)
+
+# Gestion thread-safe de la capture vidéo
+class VideoCamera:
+    def __init__(self, source=0):
+        self.cap = cv2.VideoCapture(source)
+        self.lock = threading.Lock()
+        self.running = True
+
+    def get_frame(self):
+        with self.lock:
+            if not self.running or not self.cap.isOpened():
+                return None
+            success, frame = self.cap.read()
+            if not success:
+                return None
+            ret, buffer = cv2.imencode('.jpg', frame)
+            if not ret:
+                return None
+            return buffer.tobytes()
+
+    def release(self):
+        with self.lock:
+            self.running = False
+            if self.cap.isOpened():
+                self.cap.release()
+
+video_camera = VideoCamera()
+
 @bp.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
@@ -20,108 +56,115 @@ def index():
         if command:
             send_command(command)
             flash(f"Commande envoyée : {command}", "success")
+            logger.info(f"Commande envoyée via formulaire : {command}")
         else:
             flash("Aucune commande sélectionnée.", "warning")
         return redirect(url_for('api.index'))
+
     ack_info = None
-    if last_ack["command"]:
+    if last_ack.get("command"):
         ack_info = f"Le robot a confirmé la commande : {last_ack['command']} (statut : {last_ack['status']})"
     return render_template('index.html', ack_info=ack_info)
 
-# Route pour envoyer des commandes au robot
 @bp.route('/joystick', methods=['POST'])
+@csrf.exempt  # À sécuriser selon contexte (token CSRF ou autre)
 def joystick_control():
-    data = request.get_json()
+    data = request.get_json(force=True)
+    if not data:
+        abort(400, description="Données JSON manquantes")
+
     jtype = data.get('type')
-    if data.get('stop'):
-        if jtype == 'direction' or jtype == 'turn':
+    stop = data.get('stop', False)
+    key = data.get('key')
+
+    if stop:
+        if jtype in ('direction', 'turn'):
             send_command('StopTurn')
-        elif jtype == 'move':
-            send_command('StopMove')
+            logger.debug("Commande envoyée: StopTurn")
         else:
             send_command('StopMove')
+            logger.debug("Commande envoyée: StopMove (stop)")
     else:
         if jtype == 'direction':
             send_command('Turn')
+            logger.debug("Commande envoyée: Turn")
         elif jtype == 'move':
-            key = data.get('key')
             if key == 'forward':
                 send_command('Forward')
+                logger.debug("Commande envoyée: Forward")
             elif key == 'backward':
                 send_command('Backward')
+                logger.debug("Commande envoyée: Backward")
             else:
                 send_command('Move')
+                logger.debug("Commande envoyée: Move")
         elif jtype == 'turn':
-            key = data.get('key')
             if key == 'left':
                 send_command('TurnLeft')
+                logger.debug("Commande envoyée: TurnLeft")
             elif key == 'right':
                 send_command('TurnRight')
+                logger.debug("Commande envoyée: TurnRight")
             else:
                 send_command('Turn')
+                logger.debug("Commande envoyée: Turn")
         else:
             send_command('Move')
+            logger.debug("Commande envoyée: Move (default)")
+
     return '', 204
 
-# Route pour définir un chemin pour le robot
 @bp.route('/set_path', methods=['POST'])
+@csrf.exempt  # À sécuriser
 def set_path():
-    path_coords = request.get_json()
-    print(f"Nouveau chemin reçu: {path_coords}")
-    # Si tu veux publier sur MQTT, décommente et adapte la ligne ci-dessous :
+    path_coords = request.get_json(force=True)
+    if not path_coords or not isinstance(path_coords, list):
+        abort(400, description="Données de chemin invalides")
+
+    logger.info(f"Nouveau chemin reçu: {path_coords}")
     # from .mqtt_sender import send_path
     # send_path(path_coords)
     return jsonify({"status": "ok"}), 200
 
-# Route pour obtenir l'état de l'accusé de réception
 @bp.route('/robot_position')
 def robot_position():
-    # Retourne la dernière position du robot
     if not last_position:
         return jsonify({"error": "Position non disponible"}), 404
     return jsonify(last_position)
 
-# Route pour obtenir l'état du robot
 @bp.route('/robot_state')
 def robot_state():
-    # Retourne le dernier état du robot
     if not last_state:
         return jsonify({"error": "État non disponible"}), 404
     return jsonify(last_state)
 
-
-# Ouvre la caméra ou le flux vidéo du robot (modifie l'URL/ID selon ton matériel)
-# Exemple pour caméra USB : cap = cv2.VideoCapture(0)
-# Exemple pour flux RTSP : cap = cv2.VideoCapture("rtsp://ip_du_robot/stream")
-cap = cv2.VideoCapture(0)  # À adapter à ton cas réel
-
-# Fonction pour générer des frames pour le flux vidéo
 def gen_frames():
     while True:
-        success, frame = cap.read()
-        if not success:
+        frame = video_camera.get_frame()
+        if frame is None:
             break
-        else:
-            # Encode l'image en JPEG
-            ret, buffer = cv2.imencode('.jpg', frame)
-            frame = buffer.tobytes()
-            # MJPEG : multipart/x-mixed-replace
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
-# Route pour afficher le flux vidéo du robot
 @bp.route('/robot_video')
 def robot_video():
     return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
-# Routes pour les commandes du robot
 @bp.route('/robot_stop', methods=['POST'])
+@csrf.exempt  # À sécuriser
 def robot_stop():
-    send_command('StopMove')  # ou la commande MQTT spécifique pour stopper
+    send_command('StopMove')
+    logger.info("Commande envoyée: StopMove (robot_stop)")
     return jsonify({"status": "ok", "message": "Robot stoppé"})
 
-# Route pour démarrer le robot
 @bp.route('/robot_pause', methods=['POST'])
+@csrf.exempt  # À sécuriser
 def robot_pause():
-    send_command('Pause')  # remplace par la commande MQTT réelle pour pause si elle existe
+    send_command('Pause')
+    logger.info("Commande envoyée: Pause (robot_pause)")
     return jsonify({"status": "ok", "message": "Robot en pause"})
+
+# Nettoyage à prévoir dans le serveur Flask (hook teardown)
+def release_resources():
+    video_camera.release()
+    logger.info("Ressources vidéo libérées")

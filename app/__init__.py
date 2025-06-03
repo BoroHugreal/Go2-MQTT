@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+"""
+Initialisation de l'application Flask et des listeners MQTT
+"""
+
+import os
+import logging
 from flask import Flask
 from .routes import bp
 from .config import MQTT_BROKER, MQTT_PORT
@@ -5,19 +12,23 @@ from .mqtt_ack_listener import run_listener
 from .mqtt_position_listener import run_position_listener
 from .mqtt_state_listener import run_state_listener
 
-# app/__init__.py
-# Initialisation de l'application Flask et des listeners MQTT
-# -*- coding: utf-8 -*-
-
-"""
-Initialisation de l'application Flask et des listeners MQTT
-"""
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
 def create_app():
     app = Flask(__name__)
-    app.secret_key = "change_this_secret_key"
+    
+    app.secret_key = os.environ.get("FLASK_SECRET_KEY", "unsafe-default-key")
+    if app.secret_key == "unsafe-default-key":
+        logging.warning("FLASK_SECRET_KEY non défini, utilisez une variable d’environnement pour plus de sécurité.")
+    
     app.register_blueprint(bp)
-    run_listener(MQTT_BROKER, MQTT_PORT, "robot/ack") # Ce listener est pour les accusés de réception
-    run_position_listener(MQTT_BROKER, MQTT_PORT, "robot/position")  # Ce listener est pour la position du robot
-    run_state_listener(MQTT_BROKER, MQTT_PORT, "robot/state")  # Ce listener est pour l'état du robot
+
+    try:
+        logging.info("Démarrage des listeners MQTT.")
+        run_listener(MQTT_BROKER, MQTT_PORT, "robot/ack")
+        run_position_listener(MQTT_BROKER, MQTT_PORT, "robot/position")
+        run_state_listener(MQTT_BROKER, MQTT_PORT, "robot/state")
+    except Exception as e:
+        logging.exception("Erreur lors de l'initialisation des listeners MQTT.")
+
     return app

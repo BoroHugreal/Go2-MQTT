@@ -1,8 +1,22 @@
+# tools/simulate_path.py
+# -*- coding: utf-8 -*-
+"""
+Ce script simule le déplacement d'un robot le long d'un chemin prédéfini 
+en publiant périodiquement sa position sur un broker MQTT.
+Il utilise la bibliothèque Paho MQTT pour gérer les connexions et les messages.
+Il est conçu pour être utilisé dans un environnement de développement ou de test, 
+afin de simuler le comportement d'un robot Go2.
+"""
+
 import paho.mqtt.client as mqtt
 import json
 import time
+import logging
+import sys
 
-# Liste des points du chemin (latitude, longitude)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+
+# Liste des points (latitude, longitude)
 path = [
     (48.777164396, 2.375696799),
     (48.777266135, 2.375488087),
@@ -23,22 +37,46 @@ BROKER = "localhost"
 PORT = 1883
 TOPIC = "robot/position"
 
-client = mqtt.Client()
-client.connect(BROKER, PORT)
-client.loop_start()
+def on_connect(client, userdata, flags, rc):
+    if rc == 0:
+        logging.info("Connexion réussie au broker MQTT.")
+    else:
+        logging.error(f"Échec de connexion : code {rc}")
+        sys.exit(1)
 
-print("Simulation du déplacement du robot Go2 sur le chemin... (Ctrl+C pour arrêter)")
+def on_disconnect(client, userdata, rc):
+    logging.warning("Déconnexion du broker MQTT.")
 
-try:
-    for lat, lon in path:
-        pos = {"x": lon, "y": lat}
-        client.publish(TOPIC, json.dumps(pos))
-        print(f"Publié : {pos}")
-        time.sleep(1)  # 1 seconde entre chaque point
-    print("Chemin terminé !")
-except KeyboardInterrupt:
-    print("\nSimulation arrêtée.")
-finally:
-    client.loop_stop()
-    client.disconnect()
-# End of the simulation
+def main():
+    client = mqtt.Client()
+    client.on_connect = on_connect
+    client.on_disconnect = on_disconnect
+
+    try:
+        client.connect(BROKER, PORT, keepalive=60)
+        client.loop_start()
+        logging.info("Début de la simulation du déplacement du robot.")
+
+        for lat, lon in path:
+            pos = {"x": lon, "y": lat}
+            res = client.publish(TOPIC, json.dumps(pos))
+            res.wait_for_publish()
+            if res.rc != mqtt.MQTT_ERR_SUCCESS:
+                logging.error(f"Erreur lors de la publication : code {res.rc}")
+            else:
+                logging.info(f"Publié : {pos}")
+            time.sleep(1)
+
+        logging.info("Chemin terminé.")
+
+    except KeyboardInterrupt:
+        logging.info("Simulation interrompue par l'utilisateur.")
+    except Exception:
+        logging.exception("Erreur pendant la simulation.")
+    finally:
+        client.loop_stop()
+        client.disconnect()
+        logging.info("Client MQTT déconnecté.")
+
+if __name__ == "__main__":
+    main()
