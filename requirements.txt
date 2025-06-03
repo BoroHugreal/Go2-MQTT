@@ -1,3 +1,6 @@
-flask
-paho-mqtt
-opencv-python
+Flask==2.3.3
+paho-mqtt==1.6.1
+opencv-python==4.8.1.78
+flask-wtf==1.1.1
+python-dotenv==1.0.0
+gunicorn==21.2.0

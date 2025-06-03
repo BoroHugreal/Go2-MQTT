@@ -12,6 +12,13 @@
     --alert-success-border: #c3e6cb;
 }
 
+:target::before {
+    content: "";
+    display: block;
+    height: 80px;
+    margin-top: -80px;
+}
+
 .dark {
     --bg: #181c24;
     --container-bg: #232837;
@@ -438,6 +445,60 @@ main {
 
 .reset-btn:hover {
     color: var(--accent-hover);
+}
+
+/* Indicateur MQTT */
+.mqtt-connected {
+    color: #28a745;
+    font-weight: 600;
+}
+.mqtt-disconnected {
+    color: #dc3545;
+    font-weight: 600;
+}
+
+/* Boutons d'export */
+.export-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 24px;
+    padding-left: 24px;
+    border-left: 1px solid var(--border);
+}
+.export-group label {
+    font-size: 0.95em;
+    color: var(--text);
+    margin-right: 8px;
+}
+.btn-export {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.btn-export:hover {
+    background: var(--accent-hover);
+}
+.btn-export:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+@media (max-width: 800px) {
+    .export-group {
+        flex-direction: column;
+        margin-left: 0;
+        padding-left: 0;
+        border-left: none;
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
+    }
 }
 
 /* Styles pour les formulaires */

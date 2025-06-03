@@ -9,7 +9,7 @@ from flask_wtf.csrf import CSRFProtect
 from .mqtt_sender import send_command
 from .mqtt_ack_listener import last_ack
 from .mqtt_position_listener import last_position
-from .mqtt_state_listener import last_state
+from .mqtt_state_listener import get_state, get_mqtt_status
 import cv2
 import threading
 import logging
@@ -134,9 +134,24 @@ def robot_position():
 
 @bp.route('/robot_state')
 def robot_state():
-    if not last_state:
+    state = get_state()
+    if not state or state.get("mode") == "inconnu":
         return jsonify({"error": "État non disponible"}), 404
-    return jsonify(last_state)
+    return jsonify(state)
+
+@bp.route('/robot_state/export')
+def robot_state_export():
+    state = get_state()
+    if not state or state.get("mode") == "inconnu":
+        return jsonify({"error": "État non disponible"}), 404
+    response = jsonify(state)
+    response.headers["Content-Disposition"] = "attachment; filename=robot_state.json"
+    return response
+
+@bp.route('/mqtt_status')
+def mqtt_status():
+    status = get_mqtt_status()
+    return jsonify({"connected": status})
 
 def gen_frames():
     while True:

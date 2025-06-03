@@ -6,8 +6,6 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.9.0/nipplejs.min.js"></script>
 </head>
 <body>
     <header>
@@ -22,8 +20,10 @@
         <div class="robot-status-header">
             <span id="header-state">État : <span id="header-state-val">...</span></span>
             <span id="header-battery">🔋 <span id="header-battery-val">...</span>%</span>
+            <span id="mqtt-status">MQTT : <span id="mqtt-status-val" class="mqtt-disconnected">Déconnecté</span></span>
         </div>
     </header>
+
     <nav>
         <ul>
             <li><a href="#intro">Introduction</a></li>
@@ -33,131 +33,70 @@
             <li><a href="#doc-archi">Documentation</a></li>
         </ul>
     </nav>
+
     <main>
         <div class="container">
-            <!-- Introduction et documentation -->
+
             <section class="panel panel-intro" id="intro">
-                <h1 id="intro">Bienvenue sur le panneau de contrôle du robot Go2</h1>
-                <p>
-                    Cette interface web vous permet de piloter et surveiller en temps réel un robot quadrupède <b>Go2 (Unitree Robotics)</b>.<br>
-                    <ul>
-                        <li><b>Envoyer des commandes</b> prédéfinies ou personnalisées au robot</li>
-                        <li><b>Contrôler la direction</b> grâce au joystick ou au clavier</li>
-                        <li><b>Visualiser sa position, orientation, vitesse et batterie</b> en direct</li>
-                        <li><b>Tracer et envoyer un chemin</b> sur la carte</li>
-                        <li><b>Voir le flux vidéo</b> embarqué</li>
-                    </ul>
-                    <em>Utilisez le menu à gauche ou faites défiler pour explorer toutes les fonctionnalités.</em>
-                </p>
-                <p class="section-desc" style="margin-top:1em;font-size:0.95em;color:#888;">
-                    <b>Architecture technique :</b> L’API web s’appuie sur Flask (Python), MQTT pour la communication temps réel, Leaflet pour la cartographie, et NippleJS pour le joystick.<br>
-                    <a href="#doc-archi" style="color:var(--accent);text-decoration:underline;">Voir le schéma d’architecture</a>
+                <h1>Bienvenue sur le panneau de contrôle du robot Go2</h1>
+                <p>Cette interface web permet de piloter et surveiller en temps réel un robot quadrupède <strong>Go2 (Unitree Robotics)</strong>.</p>
+                <ul>
+                    <li>Envoyer des commandes prédéfinies ou personnalisées</li>
+                    <li>Contrôler la direction par joystick ou clavier</li>
+                    <li>Visualiser position, orientation, vitesse, batterie</li>
+                    <li>Tracer et envoyer un chemin sur la carte</li>
+                    <li>Voir le flux vidéo embarqué</li>
+                </ul>
+                <p class="section-desc">
+                    <strong>Architecture technique :</strong> Flask (Python), MQTT (temps réel), Leaflet (cartographie), NippleJS (joystick).<br>
+                    <a href="#doc-archi">Voir le schéma d’architecture</a>
                 </p>
             </section>
 
-            <!-- Commandes rapides -->
             <section class="panel panel-control" id="control">
                 <h2>Commandes rapides</h2>
                 <p class="section-desc">
-                    Sélectionnez une commande dans la liste pour l’envoyer instantanément au robot Go2.<br>
-                    Ces commandes couvrent les postures, la locomotion, les danses, et divers modes spéciaux.<br>
-                    <em>Le robot confirme chaque commande reçue via MQTT.</em>
+                    Sélectionnez une commande pour l’envoyer instantanément au robot Go2. Ces commandes couvrent postures, locomotion, danses, et modes spéciaux.
+                    <em>Le robot confirme chaque commande via MQTT.</em>
                 </p>
+
                 <form method="post" id="command-form">
                     <select name="command" id="command" required>
                         <option value="" disabled selected>-- Sélectionnez une commande --</option>
-                        <!-- ... toutes les options ... -->
-                        <option value="Damp">Damp</option>
-                        <option value="BalanceStand">BalanceStand</option>
-                        <option value="StopMove">StopMove</option>
-                        <option value="StandUp">StandUp</option>
-                        <option value="StandDown">StandDown</option>
-                        <option value="RecoveryStand">RecoveryStand</option>
-                        <option value="Euler">Euler</option>
-                        <option value="Move">Move</option>
-                        <option value="Sit">Sit</option>
-                        <option value="RiseSit">RiseSit</option>
-                        <option value="SwitchGait">SwitchGait</option>
-                        <option value="Trigger">Trigger</option>
-                        <option value="BodyHeight">BodyHeight</option>
-                        <option value="FootRaiseHeight">FootRaiseHeight</option>
-                        <option value="SpeedLevel">SpeedLevel</option>
-                        <option value="Hello">Hello</option>
-                        <option value="Stretch">Stretch</option>
-                        <option value="TrajectoryFollow">TrajectoryFollow</option>
-                        <option value="ContinuousGait">ContinuousGait</option>
-                        <option value="Content">Content</option>
-                        <option value="Wallow">Wallow</option>
-                        <option value="Dance1">Dance1</option>
-                        <option value="Dance2">Dance2</option>
-                        <option value="GetBodyHeight">GetBodyHeight</option>
-                        <option value="GetFootRaiseHeight">GetFootRaiseHeight</option>
-                        <option value="GetSpeedLevel">GetSpeedLevel</option>
-                        <option value="SwitchJoystick">SwitchJoystick</option>
-                        <option value="Pose">Pose</option>
-                        <option value="Scrape">Scrape</option>
-                        <option value="FrontFlip">FrontFlip</option>
-                        <option value="FrontJump">FrontJump</option>
-                        <option value="FrontPounce">FrontPounce</option>
-                        <option value="WiggleHips">WiggleHips</option>
-                        <option value="GetState">GetState</option>
-                        <option value="EconomicGait">EconomicGait</option>
-                        <option value="FingerHeart">FingerHeart</option>
+                        <!-- Liste exhaustive déjà fournie précédemment -->
+                        {% for cmd in commands %}
+                        <option value="{{ cmd }}">{{ cmd }}</option>
+                        {% endfor %}
                     </select>
                     <button type="submit">Envoyer</button>
                 </form>
-                <p class="section-desc">
-                    <b>Tableau de bord temps réel :</b> affiche la position GPS, l’orientation (boussole), la vitesse instantanée, la distance parcourue, l’état courant, le niveau de batterie et le statut général du robot.
-                </p>
+
                 <div class="status-grid">
-                    <div class="status-item">
-                        <span class="label">Position</span>
-                        <span id="coords-value">--</span>
-                    </div>
-                    <div class="status-item">
-                        <span class="label">Orientation</span>
-                        <span id="yaw-value">0°</span>
-                        <span id="compass-arrow" class="compass-arrow" style="transform: rotate(0deg);">🧭</span>
-                    </div>
-                    <div class="status-item">
-                        <span class="label">Vitesse</span>
-                        <span id="speed-value">0.00</span> m/s
-                    </div>
-                    <div class="status-item">
-                        <span class="label">Distance</span>
-                        <span id="distance-value">0.00</span> <span id="distance-unit">m</span>
-                        <button onclick="resetDistance()" class="reset-btn" title="Réinitialiser">↺</button>
-                    </div>
-                    <div class="status-item">
-                        <span class="label">État</span>
-                        <span id="state-mode">--</span>
-                    </div>
-                    <div class="status-item">
-                        <span class="label">Batterie</span>
-                        <span id="state-battery">--</span> %
-                    </div>
-                    <div class="status-item">
-                        <span class="label">Statut</span>
-                        <span id="state-status">--</span>
-                    </div>
+                    <div class="status-item"><span class="label">Position</span><span id="coords-value">--</span></div>
+                    <div class="status-item"><span class="label">Orientation</span><span id="yaw-value">0°</span><span id="compass-arrow" class="compass-arrow" style="transform: rotate(0deg);">🧭</span></div>
+                    <div class="status-item"><span class="label">Vitesse</span><span id="speed-value">0.00</span> m/s</div>
+                    <div class="status-item"><span class="label">Distance</span><span id="distance-value">0.00</span> <span id="distance-unit">m</span><button onclick="resetDistance()" class="reset-btn" title="Réinitialiser">↺</button></div>
+                    <div class="status-item"><span class="label">État</span><span id="state-mode">--</span></div>
+                    <div class="status-item"><span class="label">Batterie</span><span id="state-battery">--</span> %</div>
+                    <div class="status-item"><span class="label">Statut</span><span id="state-status">--</span></div>
                 </div>
             </section>
 
-            <!-- Contrôles directionnels -->
             <section class="panel">
                 <h2>Contrôles directionnels</h2>
                 <p class="section-desc">
-                    <b>Joystick :</b> Faites glisser le joystick pour orienter le robot en douceur.<br>
-                    <b>Clavier :</b> Utilisez les touches <b>↑</b> et <b>↓</b> pour avancer/reculer, <b>←</b> et <b>→</b> pour tourner.<br>
-                    <em>Les boutons STOP/PAUSE permettent d’arrêter ou de mettre en pause le robot immédiatement.</em>
+                    <strong>Joystick :</strong> glisser pour orienter le robot.<br>
+                    <strong>Clavier :</strong> flèches ↑ ↓ ← → pour avancer ou tourner.<br>
+                    <em>STOP/PAUSE arrêtent le robot immédiatement.</em>
                 </p>
+
                 <div class="control-section">
                     <div class="joystick-container">
                         <div class="joystick-label">Joystick directionnel</div>
                         <div id="joystick-direction"></div>
-                        <div class="hint-text">Glissez pour contrôler la direction</div>
+                        <div class="hint-text">Glissez pour contrôler</div>
                     </div>
-                    
+
                     <div class="keyboard-controls">
                         <div class="keyboard-label">Contrôles clavier</div>
                         <div class="arrow-grid">
@@ -166,7 +105,6 @@
                             <div class="arrow-key down">↓</div>
                             <div class="arrow-key right">→</div>
                         </div>
-                        <div class="hint-text">Utilisez les flèches pour avancer/reculer/tourner</div>
                     </div>
                 </div>
 
@@ -176,7 +114,6 @@
                 </div>
             </section>
 
-            <!-- Carte & Trajet -->
             <section class="panel panel-map" id="map-section">
                 <h2>Carte & Trajet</h2>
                 <p class="section-desc">
@@ -188,226 +125,48 @@
                     <button id="toggle-drawing" onclick="toggleDrawing()">Activer le tracé</button>
                     <button id="send-path" onclick="sendPath()" disabled>Envoyer le chemin</button>
                     <button id="clear-path" onclick="clearPath()" disabled>Effacer le tracé</button>
+                    
+                    <!-- Nouveaux boutons d'export -->
+                    <div class="export-group">
+                        <label>Exporter le tracé :</label>
+                        <button onclick="exportPath('csv')" class="btn-export">CSV</button>
+                        <button onclick="exportPath('geojson')" class="btn-export">GeoJSON</button>
+                        <button onclick="exportPath('kml')" class="btn-export">KML</button>
+                    </div>
                 </div>
                 <div id="map"></div>
-            </section>
+            </section>            
 
-            <!-- Vidéo -->
             <section class="panel panel-video" id="video">
                 <h2>Flux vidéo du robot</h2>
                 <p class="section-desc">
-                    Suivez le flux vidéo embarqué du robot Go2 pour surveiller son environnement et ses déplacements en direct.<br>
-                    <em>Le flux est transmis en MJPEG ou HLS selon la configuration matérielle.</em>
+                    Suivez l’environnement du robot en direct via son flux embarqué.<br>
+                    <em>Transmission en MJPEG ou HLS selon matériel.</em>
                 </p>
-                <img id="robot-video" src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='480' height='360' viewBox='0 0 480 360'><rect width='100%' height='100%' fill='%23000'/><text x='50%' y='50%' text-anchor='middle' fill='white' font-size='24'>Flux vidéo en cours...</text></svg>" alt="Flux vidéo du robot Go2"/>
+                <img id="robot-video" src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='480' height='360' viewBox='0 0 480 360'><rect width='100%' height='100%' fill='%23000'/><text x='50%' y='50%' text-anchor='middle' fill='white' font-size='24'>Flux vidéo en cours...</text></svg>">
             </section>
 
-            <!-- Architecture technique -->
-            <section id="doc-archi" class="panel panel-archi">
-                <h2 id="doc-archi">Architecture technique de l’API Web Go2</h2>
-                <p>
-                    <b>Explications :</b><br>
+            <section class="panel panel-doc" id="doc-archi">
+                <h2>Documentation & architecture</h2>
+                <p class="section-desc">
+                    Le système repose sur un modèle distribué :
                     <ul>
-                        <li><b>Flask</b> sert l’interface web et fait le lien entre l’utilisateur et le robot via MQTT.</li>
-                        <li><b>MQTT</b> assure la communication temps réel : commandes, retours d’état, accusés de réception.</li>
-                        <li><b>Leaflet</b> affiche la carte et le tracé du robot.</li>
-                        <li><b>NippleJS</b> gère le joystick virtuel pour la direction.</li>
-                        <li><b>OpenCV</b> ou un flux IP fournit la vidéo embarquée.</li>
+                        <li><strong>Frontend :</strong> HTML/CSS/JS (joystick, Leaflet, WebSocket)</li>
+                        <li><strong>Backend :</strong> Flask (serveur REST), MQTT (broker)</li>
+                        <li><strong>Robot :</strong> Go2, piloté via Raspberry Pi + bridge MQTT</li>
                     </ul>
                 </p>
+                <div id="architecture-diagram">
+                    <!-- Image du schéma ou canvas -->
+                </div>
             </section>
+
         </div>
     </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/nipplejs@0.9.0/dist/nipplejs.min.js"></script>
-    <script>
-        // Gestion du thème
-        document.addEventListener("DOMContentLoaded", function() {
-            const toggle = document.getElementById('theme-toggle');
-            const html = document.documentElement;
-            const savedTheme = localStorage.getItem('theme');
-            
-            if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                html.classList.add('dark');
-                toggle.checked = true;
-            }
-            
-            toggle.addEventListener('change', function() {
-                if (this.checked) {
-                    html.classList.add('dark');
-                    localStorage.setItem('theme', 'dark');
-                } else {
-                    html.classList.remove('dark');
-                    localStorage.setItem('theme', 'light');
-                }
-            });
-        });
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.9.0/nipplejs.min.js"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 
-        // Initialisation de la carte
-        const pathCoords = [
-            [48.777164396, 2.375696799],
-            [48.777266135, 2.375488087],
-            [48.777245920, 2.375302510],
-            [48.777219946, 2.374943893]
-        ];
-
-        const map = L.map('map').setView(pathCoords[0], 19);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 22,
-        }).addTo(map);
-
-        // Initialisation du joystick
-        const joystick = nipplejs.create({
-            zone: document.getElementById('joystick-direction'),
-            mode: 'static',
-            position: {left: '50%', top: '50%'},
-            color: '#007bff',
-            size: 140
-        });
-
-        joystick.on('move', function (evt, data) {
-            if (data && data.direction) {
-                console.log('Joystick:', data.angle.degree, data.direction.angle);
-                // Ici vous pouvez envoyer les commandes au robot
-            }
-        });
-
-        joystick.on('end', function () {
-            console.log('Joystick arrêté');
-            // Arrêter le mouvement du robot
-        });
-
-        // Gestion des touches du clavier
-        let activeKeys = new Set();
-
-        document.addEventListener('keydown', function(e) {
-            if (e.repeat) return;
-            
-            const key = e.key;
-            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) {
-                e.preventDefault();
-                activeKeys.add(key);
-                
-                // Visual feedback
-                const keyMap = {
-                    'ArrowUp': 'up',
-                    'ArrowDown': 'down', 
-                    'ArrowLeft': 'left',
-                    'ArrowRight': 'right'
-                };
-                
-                const element = document.querySelector(`.arrow-key.${keyMap[key]}`);
-                if (element) {
-                    element.style.background = 'var(--accent)';
-                    element.style.color = 'white';
-                }
-                
-                console.log('Touche pressée:', key);
-                // Envoyer commande au robot
-            }
-        });
-
-        document.addEventListener('keyup', function(e) {
-            const key = e.key;
-            if (activeKeys.has(key)) {
-                activeKeys.delete(key);
-                
-                // Remove visual feedback
-                const keyMap = {
-                    'ArrowUp': 'up',
-                    'ArrowDown': 'down',
-                    'ArrowLeft': 'left', 
-                    'ArrowRight': 'right'
-                };
-                
-                const element = document.querySelector(`.arrow-key.${keyMap[key]}`);
-                if (element) {
-                    element.style.background = '';
-                    element.style.color = '';
-                }
-                
-                console.log('Touche relâchée:', key);
-                // Arrêter commande au robot
-            }
-        });
-
-        // Fonctions de contrôle
-        function robotStop() {
-            console.log('Robot STOP');
-            alert('Commande STOP envoyée au robot');
-        }
-
-        function robotPause() {
-            console.log('Robot PAUSE');
-            alert('Commande PAUSE envoyée au robot');
-        }
-
-        function resetDistance() {
-            document.getElementById('distance-value').textContent = '0.00';
-            document.getElementById('distance-unit').textContent = 'm';
-        }
-
-        // Variables pour le tracé de chemin
-        let drawingPath = false;
-        let newPathCoords = [];
-        let newPathLine = null;
-
-        function toggleDrawing() {
-            drawingPath = !drawingPath;
-            document.getElementById('toggle-drawing').textContent = drawingPath ? "Arrêter le tracé" : "Activer le tracé";
-            document.getElementById('send-path').disabled = !drawingPath;
-            document.getElementById('clear-path').disabled = !drawingPath;
-        }
-
-        function sendPath() {
-            if (newPathCoords.length < 2) {
-                alert("Tracez au moins deux points !");
-                return;
-            }
-            console.log('Chemin envoyé:', newPathCoords);
-            alert("Chemin envoyé au robot !");
-            toggleDrawing();
-        }
-
-        function clearPath() {
-            newPathCoords = [];
-            if (newPathLine) {
-                map.removeLayer(newPathLine);
-                newPathLine = null;
-            }
-        }
-
-        map.on('click', function(e) {
-            if (drawingPath) {
-                newPathCoords.push([e.latlng.lat, e.latlng.lng]);
-                if (newPathLine) {
-                    newPathLine.setLatLngs(newPathCoords);
-                } else {
-                    newPathLine = L.polyline(newPathCoords, {color: 'green', weight: 4, dashArray: '5,10'}).addTo(map);
-                }
-            }
-        });
-
-        // Simulation de mise à jour des données
-        setInterval(function() {
-            const battery = Math.floor(Math.random() * 30) + 70;
-            const speed = (Math.random() * 2).toFixed(2);
-            document.getElementById('header-battery-val').textContent = battery;
-            document.getElementById('speed-value').textContent = speed;
-        }, 3000);
-
-        document.querySelectorAll('nav a[href^="#"]').forEach(link => {
-            link.addEventListener('click', function(e) {
-                const targetId = this.getAttribute('href').replace('#', '');
-                const target = document.getElementById(targetId);
-                if (target) {
-                    e.preventDefault();
-                    target.scrollIntoView({ behavior: 'smooth' });
-                    setTimeout(() => target.focus(), 600); // met le focus après le scroll
-                }
-            });
-        });
-
-    </script>
 </body>
 </html>
