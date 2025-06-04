@@ -140,11 +140,12 @@
             <section class="panel panel-video" id="video">
                 <h2>Flux vidéo du robot</h2>
                 <p class="section-desc">
-                    Suivez l’environnement du robot en direct via son flux embarqué.<br>
-                    <em>Transmission en MJPEG ou HLS selon matériel.</em>
+                    Suivez le flux vidéo embarqué du robot Go2 pour surveiller son environnement et ses déplacements en direct.<br>
+                    <em>Le flux est transmis en MJPEG via MQTT.</em>
                 </p>
-                <img id="robot-video" src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='480' height='360' viewBox='0 0 480 360'><rect width='100%' height='100%' fill='%23000'/><text x='50%' y='50%' text-anchor='middle' fill='white' font-size='24'>Flux vidéo en cours...</text></svg>">
-            </section>
+                <div id="video-status" class="video-status">Statut vidéo : <span id="video-status-val">...</span></div>
+                <img id="robot-video" src="/robot_video" alt="Flux vidéo du robot Go2" style="max-width:100%;border-radius:8px;">
+            </section>            
 
             <section class="panel panel-doc" id="doc-archi">
                 <h2>Documentation & architecture</h2>

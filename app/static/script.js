@@ -289,6 +289,30 @@ function downloadFile(content, filename, mimeType) {
     URL.revokeObjectURL(url);
 }
 
+function updateVideoStatus() {
+    fetch('/video_status')
+        .then(r => r.json())
+        .then(data => {
+            const el = document.getElementById('video-status-val');
+            if (data.mqtt_connected && data.has_frame) {
+                el.textContent = "OK";
+                el.style.color = "#28a745";
+            } else {
+                el.textContent = "En attente...";
+                el.style.color = "#dc3545";
+            }
+        });
+}
+setInterval(updateVideoStatus, 4000);
+updateVideoStatus();
+
+const videoImg = document.getElementById('robot-video');
+videoImg.onerror = function() {
+    setTimeout(() => {
+        videoImg.src = '/robot_video?' + new Date().getTime();
+    }, 2000);
+};
+
 
         // Simulation de mise à jour des données
         setInterval(function() {

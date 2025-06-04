@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # Configuration des paramètres MQTT pour l'application
 
-MQTT_BROKER = "localhost"
+MQTT_BROKER = "91.108.112.88"
 MQTT_PORT = 1883
 MQTT_TOPIC_COMMAND = "robot/commands"
 MQTT_TOPIC_ACK = "robot/ack"

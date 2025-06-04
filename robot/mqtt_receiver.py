@@ -1,3 +1,9 @@
+# robot/mqtt_receiver.py
+# -*- coding: utf-8 -*-
+"""
+Écoute des commandes du robot via MQTT
+"""
+
 import asyncio
 import json
 import logging
@@ -5,10 +11,8 @@ import signal
 import sys
 import paho.mqtt.client as mqtt
 
-# Configuration logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-# Mapping nom → ID
 SPORT_CMD = {
     "Damp": 1001, "BalanceStand": 1002, "StopMove": 1003, "StandUp": 1004,
     "StandDown": 1005, "RecoveryStand": 1006, "Euler": 1007, "Move": 1008,
@@ -24,14 +28,11 @@ SPORT_CMD = {
     "FingerHeart": 1036,
 }
 
-# Configuration MQTT
 from app.config import MQTT_BROKER, MQTT_PORT, MQTT_TOPIC_COMMAND, MQTT_TOPIC_ACK
 
-# File de log
 command_queue = asyncio.Queue()
 loop = asyncio.get_event_loop()
 
-# Fonction de rappel pour la connexion MQTT
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
         logging.info("MQTT connected.")
@@ -39,7 +40,6 @@ def on_connect(client, userdata, flags, rc):
     else:
         logging.error(f"MQTT connection failed: code {rc}")
 
-# Fonction de rappel pour la réception des messages MQTT
 def on_message(client, userdata, msg):
     try:
         payload = json.loads(msg.payload.decode("utf-8"))
@@ -54,7 +54,6 @@ def on_message(client, userdata, msg):
     except Exception as e:
         logging.exception(f"Exception in message handling: {e}")
 
-# Vérification de l'environnement
 def setup_mqtt():
     client = mqtt.Client()
     client.on_connect = on_connect
@@ -67,7 +66,6 @@ def setup_mqtt():
         sys.exit(1)
     return client
 
-# Configuration du client MQTT pour les accusés de réception
 def setup_ack_client():
     client = mqtt.Client()
     try:
@@ -80,7 +78,6 @@ def setup_ack_client():
 
 ack_client = setup_ack_client()
 
-# Envoi d'un accusé de réception
 def send_ack(command_name, status="received"):
     ack_payload = json.dumps({"command": command_name, "status": status})
     result = ack_client.publish(MQTT_TOPIC_ACK, ack_payload)
@@ -89,7 +86,6 @@ def send_ack(command_name, status="received"):
     else:
         logging.error(f"Failed to send ACK for: {command_name}")
 
-# Gestion des commandes
 async def handle_commands():
     logging.info("Command handler active.")
     while True:
@@ -103,14 +99,12 @@ async def handle_commands():
             logging.exception(f"Error executing command {command_name}: {e}")
             send_ack(command_name, "error")
 
-# Fonction de nettoyage et de fermeture
 def shutdown():
     logging.info("Shutting down...")
     ack_client.loop_stop()
     ack_client.disconnect()
     sys.exit(0)
 
-# Point d'entrée principal
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, lambda s, f: shutdown())
     signal.signal(signal.SIGTERM, lambda s, f: shutdown())

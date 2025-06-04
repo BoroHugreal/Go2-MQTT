@@ -11,7 +11,6 @@ from app.config import MQTT_BROKER, MQTT_PORT, MQTT_TOPIC_ACK
 
 last_ack = {"command": None, "status": None}
 
-# Fonction de rappel pour la réception des messages MQTT
 def on_message(client, userdata, msg):
     try:
         payload = json.loads(msg.payload.decode())
@@ -20,7 +19,6 @@ def on_message(client, userdata, msg):
     except json.JSONDecodeError:
         pass
 
-# Fonction pour démarrer l'écoute des accusés de réception MQTT
 def start_ack_listener(broker=MQTT_BROKER, port=MQTT_PORT, topic=MQTT_TOPIC_ACK):
     client = mqtt.Client()
     client.on_message = on_message
@@ -29,7 +27,6 @@ def start_ack_listener(broker=MQTT_BROKER, port=MQTT_PORT, topic=MQTT_TOPIC_ACK)
     client.loop_start()
     return client
 
-# Fonction pour démarrer l'écoute des accusés de réception dans un thread
 def run_listener(broker=MQTT_BROKER, port=MQTT_PORT, topic=MQTT_TOPIC_ACK):
     thread = threading.Thread(target=start_ack_listener, args=(broker, port, topic), daemon=True)
     thread.start()

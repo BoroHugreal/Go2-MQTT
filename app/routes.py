@@ -10,44 +10,36 @@ from .mqtt_sender import send_command
 from .mqtt_ack_listener import last_ack
 from .mqtt_position_listener import last_position
 from .mqtt_state_listener import get_state, get_mqtt_status
-import cv2
-import threading
+from .mqtt_video_listener import get_last_frame, get_video_status
 import logging
+import time
 
-# Initialisation CSRF, à activer dans l'app principale
 csrf = CSRFProtect()
-
 bp = Blueprint('api', __name__)
-
-# Logger
 logger = logging.getLogger(__name__)
 
-# Gestion thread-safe de la capture vidéo
-class VideoCamera:
-    def __init__(self, source=0):
-        self.cap = cv2.VideoCapture(source)
-        self.lock = threading.Lock()
-        self.running = True
+def gen_frames():
+    while True:
+        frame = get_last_frame()
+        if frame is not None:
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+        else:
+            # Si aucune frame n'est dispo, attends un peu
+            time.sleep(0.05)
 
-    def get_frame(self):
-        with self.lock:
-            if not self.running or not self.cap.isOpened():
-                return None
-            success, frame = self.cap.read()
-            if not success:
-                return None
-            ret, buffer = cv2.imencode('.jpg', frame)
-            if not ret:
-                return None
-            return buffer.tobytes()
+@bp.route('/robot_video')
+def robot_video():
+    return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
-    def release(self):
-        with self.lock:
-            self.running = False
-            if self.cap.isOpened():
-                self.cap.release()
-
-video_camera = VideoCamera()
+@bp.route('/video_status')
+def video_status():
+    mqtt_status = get_video_status()
+    has_frame = get_last_frame() is not None
+    return jsonify({
+        "mqtt_connected": mqtt_status,
+        "has_frame": has_frame
+    })
 
 @bp.route('/', methods=['GET', 'POST'])
 def index():
@@ -67,7 +59,7 @@ def index():
     return render_template('index.html', ack_info=ack_info)
 
 @bp.route('/joystick', methods=['POST'])
-@csrf.exempt  # À sécuriser selon contexte (token CSRF ou autre)
+@csrf.exempt
 def joystick_control():
     data = request.get_json(force=True)
     if not data:
@@ -115,7 +107,7 @@ def joystick_control():
     return '', 204
 
 @bp.route('/set_path', methods=['POST'])
-@csrf.exempt  # À sécuriser
+@csrf.exempt
 def set_path():
     path_coords = request.get_json(force=True)
     if not path_coords or not isinstance(path_coords, list):
@@ -153,33 +145,18 @@ def mqtt_status():
     status = get_mqtt_status()
     return jsonify({"connected": status})
 
-def gen_frames():
-    while True:
-        frame = video_camera.get_frame()
-        if frame is None:
-            break
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-
-@bp.route('/robot_video')
-def robot_video():
-    return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
-
 @bp.route('/robot_stop', methods=['POST'])
-@csrf.exempt  # À sécuriser
+@csrf.exempt
 def robot_stop():
     send_command('StopMove')
     logger.info("Commande envoyée: StopMove (robot_stop)")
     return jsonify({"status": "ok", "message": "Robot stoppé"})
 
 @bp.route('/robot_pause', methods=['POST'])
-@csrf.exempt  # À sécuriser
+@csrf.exempt
 def robot_pause():
     send_command('Pause')
     logger.info("Commande envoyée: Pause (robot_pause)")
     return jsonify({"status": "ok", "message": "Robot en pause"})
 
-# Nettoyage à prévoir dans le serveur Flask (hook teardown)
-def release_resources():
-    video_camera.release()
-    logger.info("Ressources vidéo libérées")
+# Plus besoin de release_resources() pour la vidéo locale
