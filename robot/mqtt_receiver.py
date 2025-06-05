@@ -56,6 +56,7 @@ def on_message(client, userdata, msg):
 
 def setup_mqtt():
     client = mqtt.Client()
+    client.username_pw_set("admin", "L!ss!2025")
     client.on_connect = on_connect
     client.on_message = on_message
     try:
@@ -68,6 +69,7 @@ def setup_mqtt():
 
 def setup_ack_client():
     client = mqtt.Client()
+    client.username_pw_set("admin", "L!ss!2025") 
     try:
         client.connect(MQTT_BROKER, MQTT_PORT, keepalive=60)
         client.loop_start()

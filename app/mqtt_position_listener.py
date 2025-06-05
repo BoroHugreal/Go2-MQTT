@@ -28,6 +28,7 @@ def on_message(client, userdata, msg):
 # Fonction pour démarrer l'écoute des positions MQTT
 def start_position_listener(broker=MQTT_BROKER, port=MQTT_PORT, topic=MQTT_TOPIC_POSITION):
     client = mqtt.Client()
+    client.username_pw_set("admin", "L!ss!2025")
     client.on_message = on_message
     client.connect(broker, port)
     client.subscribe(topic)

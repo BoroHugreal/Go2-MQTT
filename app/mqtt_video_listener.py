@@ -51,6 +51,7 @@ def get_video_status():
 
 def start_video_listener(broker, port, topic):
     client = mqtt.Client()
+    client.username_pw_set("admin", "L!ss!2025")
     client.on_connect = on_connect
     client.on_disconnect = on_disconnect
     client.on_message = on_message

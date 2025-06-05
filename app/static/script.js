@@ -165,7 +165,9 @@
             }
         });
 
-// ===== SUIVI DU STATUT MQTT =====
+// ========================
+// Statut MQTT (header)
+// ========================
 function updateMqttStatus() {
     fetch('/mqtt_status')
         .then(response => response.json())
@@ -179,51 +181,87 @@ function updateMqttStatus() {
                 statusElement.className = 'mqtt-disconnected';
             }
         })
-        .catch(error => {
+        .catch(() => {
             const statusElement = document.getElementById('mqtt-status-val');
             statusElement.textContent = 'Erreur';
             statusElement.className = 'mqtt-disconnected';
         });
 }
-
-// Mise à jour du statut MQTT toutes les 3 secondes
 setInterval(updateMqttStatus, 3000);
-updateMqttStatus(); // Appel initial
+updateMqttStatus();
 
-// ===== EXPORT DU TRACÉ =====
+// ========================
+// Statut vidéo (Go2)
+// ========================
+function updateVideoStatus() {
+    fetch('/video_status')
+        .then(r => r.json())
+        .then(data => {
+            const el = document.getElementById('video-status-val');
+            if (data.mqtt_connected && data.has_frame) {
+                el.textContent = "Flux actif";
+                el.style.color = "#28a745";
+            } else if (data.mqtt_connected) {
+                el.textContent = "En attente du flux...";
+                el.style.color = "#ffc107";
+            } else {
+                el.textContent = "MQTT déconnecté";
+                el.style.color = "#dc3545";
+            }
+        })
+        .catch(() => {
+            const el = document.getElementById('video-status-val');
+            el.textContent = "Erreur";
+            el.style.color = "#dc3545";
+        });
+}
+setInterval(updateVideoStatus, 4000);
+updateVideoStatus();
+
+// ========================
+// Robustesse flux vidéo MJPEG
+// ========================
+const videoImg = document.getElementById('robot-video');
+if (videoImg) {
+    videoImg.onerror = function() {
+        setTimeout(() => {
+            videoImg.src = '/robot_video?' + new Date().getTime();
+        }, 2000);
+    };
+}
+
+// ========================
+// Export du tracé (CSV, GeoJSON, KML)
+// ========================
+// Suppose que newPathCoords contient le chemin dessiné (ex: [[lat,lng], ...])
 function exportPath(format) {
-    // Remplace actualPath par newPathCoords
-    if (!newPathCoords || newPathCoords.length === 0) {
-        alert('Aucun tracé à exporter. Le robot doit avoir parcouru un chemin.');
+    if (!window.newPathCoords || newPathCoords.length === 0) {
+        alert('Aucun tracé à exporter. Tracez un chemin d\'abord.');
         return;
     }
-
-    const path = newPathCoords; // ou actualPath si tu veux exporter le chemin réel du robot
-
     const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
     let filename, content, mimeType;
 
     switch (format) {
         case 'csv':
             filename = `trace_go2_${timestamp}.csv`;
-            content = generateCSV(path);
+            content = generateCSV(newPathCoords);
             mimeType = 'text/csv';
             break;
         case 'geojson':
             filename = `trace_go2_${timestamp}.geojson`;
-            content = generateGeoJSON(path);
+            content = generateGeoJSON(newPathCoords);
             mimeType = 'application/json';
             break;
         case 'kml':
             filename = `trace_go2_${timestamp}.kml`;
-            content = generateKML(path);
+            content = generateKML(newPathCoords);
             mimeType = 'application/vnd.google-earth.kml+xml';
             break;
         default:
             alert('Format non supporté');
             return;
     }
-
     downloadFile(content, filename, mimeType);
 }
 
@@ -248,7 +286,7 @@ function generateGeoJSON(path) {
                 },
                 "geometry": {
                     "type": "LineString",
-                    "coordinates": path.map(point => [point[1], point[0]]) // GeoJSON utilise [lng, lat]
+                    "coordinates": path.map(point => [point[1], point[0]])
                 }
             }
         ]
@@ -259,21 +297,18 @@ function generateGeoJSON(path) {
 function generateKML(path) {
     const coordinates = path.map(point => `${point[1]},${point[0]},0`).join(' ');
     const kml = `<?xml version="1.0" encoding="UTF-8"?>
-    <kml xmlns="http://www.opengis.net/kml/2.2">
-    <Document>
-        <name>Tracé du robot Go2</name>
-        <description>Tracé généré le ${new Date().toLocaleString()}</description>
-        <Placemark>
-        <name>Parcours du robot</name>
-        <description>Chemin suivi par le robot Go2</description>
-        <LineString>
-            <extrude>1</extrude>
-            <tessellate>1</tessellate>
-            <coordinates>${coordinates}</coordinates>
-        </LineString>
-        </Placemark>
-    </Document>
-    </kml>`;
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Tracé du robot Go2</name>
+    <description>Tracé généré le ${new Date().toLocaleString()}</description>
+    <Placemark>
+      <name>Parcours du robot</name>
+      <LineString>
+        <coordinates>${coordinates}</coordinates>
+      </LineString>
+    </Placemark>
+  </Document>
+</kml>`;
     return kml;
 }
 
@@ -289,47 +324,22 @@ function downloadFile(content, filename, mimeType) {
     URL.revokeObjectURL(url);
 }
 
-function updateVideoStatus() {
-    fetch('/video_status')
-        .then(r => r.json())
-        .then(data => {
-            const el = document.getElementById('video-status-val');
-            if (data.mqtt_connected && data.has_frame) {
-                el.textContent = "OK";
-                el.style.color = "#28a745";
-            } else {
-                el.textContent = "En attente...";
-                el.style.color = "#dc3545";
-            }
-        });
-}
-setInterval(updateVideoStatus, 4000);
-updateVideoStatus();
+// Simulation de mise à jour des données
+setInterval(function() {
+    const battery = Math.floor(Math.random() * 30) + 70;
+    const speed = (Math.random() * 2).toFixed(2);
+    document.getElementById('header-battery-val').textContent = battery;
+    document.getElementById('speed-value').textContent = speed;
+}, 3000);
 
-const videoImg = document.getElementById('robot-video');
-videoImg.onerror = function() {
-    setTimeout(() => {
-        videoImg.src = '/robot_video?' + new Date().getTime();
-    }, 2000);
-};
-
-
-        // Simulation de mise à jour des données
-        setInterval(function() {
-            const battery = Math.floor(Math.random() * 30) + 70;
-            const speed = (Math.random() * 2).toFixed(2);
-            document.getElementById('header-battery-val').textContent = battery;
-            document.getElementById('speed-value').textContent = speed;
-        }, 3000);
-
-        document.querySelectorAll('nav a[href^="#"]').forEach(link => {
-            link.addEventListener('click', function(e) {
-                const targetId = this.getAttribute('href').replace('#', '');
-                const target = document.getElementById(targetId);
-                if (target) {
-                    e.preventDefault();
-                    target.scrollIntoView({ behavior: 'smooth' });
-                    setTimeout(() => target.focus(), 600); // met le focus après le scroll
-                }
-            });
-        });
+document.querySelectorAll('nav a[href^="#"]').forEach(link => {
+    link.addEventListener('click', function(e) {
+        const targetId = this.getAttribute('href').replace('#', '');
+        const target = document.getElementById(targetId);
+        if (target) {
+            e.preventDefault();
+            target.scrollIntoView({ behavior: 'smooth' });
+            setTimeout(() => target.focus(), 600); // met le focus après le scroll
+        }
+    });
+});
