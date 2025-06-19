@@ -457,6 +457,15 @@ main {
     font-weight: 600;
 }
 
+.video-status-active {
+    color: #28a745;
+    font-weight: bold;
+}
+.video-status-inactive {
+    color: #dc3545;
+    font-weight: bold;
+}
+
 /* Boutons d'export */
 .export-group {
     display: flex;

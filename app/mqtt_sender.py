@@ -1,41 +1,20 @@
 # app/mqtt_sender.py
 # -*- coding: utf-8 -*-
-"""
-# Envoi de commandes et de chemins via MQTT avec gestion d'erreur
+""""
+API Flask pour l'envoi de commandes et de chemins au robot Go2 via MQTT.
 """
 
-import paho.mqtt.client as mqtt
+from .mqtt_manager import mqtt_manager  # On importe l'instance globale créée dans mqtt_manager.py
+from app.config import MQTT_TOPIC_COMMAND, MQTT_TOPIC_PATH
 import json
-from app.config import MQTT_BROKER, MQTT_PORT, MQTT_TOPIC_COMMAND, MQTT_TOPIC_PATH
 
-# Fonction pour envoyer une commande au robot via MQTT
-def send_command(command_name):
-    client = mqtt.Client()
-    try:
-        client.username_pw_set("admin", "L!ss!2025")  # ← AJOUT
-        client.connect(MQTT_BROKER, MQTT_PORT)
-        client.loop_start()
-        payload = json.dumps({"command": command_name})
-        result = client.publish(MQTT_TOPIC_COMMAND, payload=payload)
-        client.loop_stop()
-        client.disconnect()
-        if result.rc != mqtt.MQTT_ERR_SUCCESS:
-            raise RuntimeError(f"Erreur publication commande MQTT, code: {result.rc}")
-    except Exception as e:
-        raise RuntimeError(f"Erreur envoi commande MQTT: {e}")
+def send_command(command):
+    payload = json.dumps({"command": command})
+    return mqtt_manager.publish(MQTT_TOPIC_COMMAND, payload)
 
-# Fonction pour envoyer un chemin au robot via MQTT
 def send_path(path_coords):
-    client = mqtt.Client()
-    try:
-        client.username_pw_set("admin", "L!ss!2025")  # ← AJOUT
-        client.connect(MQTT_BROKER, MQTT_PORT)
-        client.loop_start()
-        payload = json.dumps({"path": path_coords})
-        result = client.publish(MQTT_TOPIC_PATH, payload=payload)
-        client.loop_stop()
-        client.disconnect()
-        if result.rc != mqtt.MQTT_ERR_SUCCESS:
-            raise RuntimeError(f"Erreur publication chemin MQTT, code: {result.rc}")
-    except Exception as e:
-        raise RuntimeError(f"Erreur envoi chemin MQTT: {e}")
+    payload = json.dumps({"waypoints": path_coords})
+    return mqtt_manager.publish(MQTT_TOPIC_PATH, payload)
+
+def check_mqtt_connection():
+    return mqtt_manager.is_connected()

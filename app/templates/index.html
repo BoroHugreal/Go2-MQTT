@@ -60,22 +60,22 @@
                     <em>Le robot confirme chaque commande via MQTT.</em>
                 </p>
 
-                <form method="post" id="command-form">
+                <form id="command-form" method="post">
                     <select name="command" id="command" required>
                         <option value="" disabled selected>-- Sélectionnez une commande --</option>
-                        <!-- Liste exhaustive déjà fournie précédemment -->
                         {% for cmd in commands %}
                         <option value="{{ cmd }}">{{ cmd }}</option>
                         {% endfor %}
                     </select>
                     <button type="submit">Envoyer</button>
                 </form>
+                <div id="command-feedback" class="feedback"></div>
 
                 <div class="status-grid">
                     <div class="status-item"><span class="label">Position</span><span id="coords-value">--</span></div>
                     <div class="status-item"><span class="label">Orientation</span><span id="yaw-value">0°</span><span id="compass-arrow" class="compass-arrow" style="transform: rotate(0deg);">🧭</span></div>
                     <div class="status-item"><span class="label">Vitesse</span><span id="speed-value">0.00</span> m/s</div>
-                    <div class="status-item"><span class="label">Distance</span><span id="distance-value">0.00</span> <span id="distance-unit">m</span><button onclick="resetDistance()" class="reset-btn" title="Réinitialiser">↺</button></div>
+                    <div class="status-item"><span class="label">Distance</span><span id="distance-value">0.00</span> <span id="distance-unit">m</span><button type="button" onclick="resetDistance()" class="reset-btn" title="Réinitialiser">↺</button></div>
                     <div class="status-item"><span class="label">État</span><span id="state-mode">--</span></div>
                     <div class="status-item"><span class="label">Batterie</span><span id="state-battery">--</span> %</div>
                     <div class="status-item"><span class="label">Statut</span><span id="state-status">--</span></div>
@@ -109,8 +109,8 @@
                 </div>
 
                 <div class="action-buttons">
-                    <button class="btn-action btn-stop" onclick="robotStop()">STOP</button>
-                    <button class="btn-action btn-pause" onclick="robotPause()">PAUSE</button>
+                    <button class="btn-action btn-stop" type="button" onclick="robotStop()">STOP</button>
+                    <button class="btn-action btn-pause" type="button" onclick="robotPause()">PAUSE</button>
                 </div>
             </section>
 
@@ -122,19 +122,18 @@
                     <em>Le tracé rouge montre le parcours réel du robot, le tracé vert le chemin programmé.</em>
                 </p>
                 <div class="map-actions">
-                    <button id="toggle-drawing" onclick="toggleDrawing()">Activer le tracé</button>
-                    <button id="send-path" onclick="sendPath()" disabled>Envoyer le chemin</button>
-                    <button id="clear-path" onclick="clearPath()" disabled>Effacer le tracé</button>
+                    <button id="toggle-drawing" type="button" onclick="toggleDrawing()">Activer le tracé</button>
+                    <button id="send-path" type="button" onclick="sendPath()" disabled>Envoyer le chemin</button>
+                    <button id="clear-path" type="button" onclick="clearPath()" disabled>Effacer le tracé</button>
                     
-                    <!-- Nouveaux boutons d'export -->
                     <div class="export-group">
                         <label>Exporter le tracé :</label>
-                        <button onclick="exportPath('csv')" class="btn-export">CSV</button>
-                        <button onclick="exportPath('geojson')" class="btn-export">GeoJSON</button>
-                        <button onclick="exportPath('kml')" class="btn-export">KML</button>
+                        <button type="button" onclick="exportPath('csv')" class="btn-export">CSV</button>
+                        <button type="button" onclick="exportPath('geojson')" class="btn-export">GeoJSON</button>
+                        <button type="button" onclick="exportPath('kml')" class="btn-export">KML</button>
                     </div>
                 </div>
-                <div id="map"></div>
+                <div id="map" style="width:100%;height:450px;"></div>
             </section>
 
             <section class="panel panel-video" id="video">
@@ -144,13 +143,11 @@
                     <em>Transmission en MJPEG via MQTT.</em>
                 </p>
                 <img id="robot-video" src="/robot_video" alt="Flux vidéo du robot Go2" style="max-width:100%;border-radius:8px;border:1px solid var(--border);">
-                
                 <div id="video-status" class="video-status" style="margin-top:10px;font-size:0.9em;">
                     Statut vidéo : <span id="video-status-val">...</span>
                 </div>
             </section>
                        
-
             <section class="panel panel-doc" id="doc-archi">
                 <h2>Documentation & architecture</h2>
                 <p class="section-desc">
@@ -165,13 +162,11 @@
                     <!-- Image du schéma ou canvas -->
                 </div>
             </section>
-
         </div>
     </main>
 
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.9.0/nipplejs.min.js"></script>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
-
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBz-AoLZgttK-DEAbw2jBtInA8ZhitrwLE&callback=initMap" async defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.9.0/nipplejs.min.js"></script>
 </body>
 </html>
