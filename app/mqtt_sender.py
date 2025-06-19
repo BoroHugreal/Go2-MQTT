@@ -4,7 +4,7 @@
 API Flask pour l'envoi de commandes et de chemins au robot Go2 via MQTT.
 """
 
-from .mqtt_manager import mqtt_manager  # On importe l'instance globale créée dans mqtt_manager.py
+from .mqtt_manager import mqtt_manager
 from app.config import MQTT_TOPIC_COMMAND, MQTT_TOPIC_PATH
 import json
 

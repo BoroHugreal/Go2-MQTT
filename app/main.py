@@ -45,6 +45,7 @@ def set_path():
 @bp.route('/mqtt_status')
 def mqtt_status():
     connected = check_mqtt_connection()
+    print(f"[DEBUG] /mqtt_status called, returns: {connected}")
     return jsonify({"connected": connected})
 
 @bp.route('/robot_stop', methods=['POST'])
