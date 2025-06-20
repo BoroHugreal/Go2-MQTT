@@ -1,7 +1,7 @@
 # app/main.py
 from flask import Response, Blueprint, request, render_template, flash, redirect, url_for, jsonify, abort
 from flask_wtf.csrf import CSRFProtect
-from .mqtt_sender import send_path, send_command, check_mqtt_connection
+from .mqtt_sender import send_path, send_command, check_mqtt_connection, SPORT_CMD
 import logging
 
 csrf = CSRFProtect()
@@ -9,8 +9,8 @@ bp = Blueprint('api', __name__)
 logger = logging.getLogger(__name__)
 
 COMMANDS = [
-    "Stand", "Sit", "Forward", "Backward", "TurnLeft", "TurnRight", "StopMove", "Pause",
-    "Dance", "GetUp", "Rest", "Stretch", "Shake", "Wave", "PushUp"
+    "StandUp", "StandDown", "Sit", "StopMove", "Move", 
+    "Dance1", "Dance2", "Stretch", "Hello", "FrontFlip", "FingerHeart"
 ]
 
 @bp.route('/', methods=['GET', 'POST'])
@@ -106,11 +106,12 @@ def joystick_control():
     if stop:
         send_command('StopMove')
     else:
+        # Mapping direction -> commandes numériques
         if jtype == 'direction':
             if key in ['up', 'forward']:
-                send_command('Forward')
+                send_command('Move')  # Commande générale pour avancer
             elif key in ['down', 'backward']:
-                send_command('Backward')
+                send_command('Move')  # Même commande avec paramètres différents
             elif key in ['left']:
                 send_command('TurnLeft')
             elif key in ['right']:
@@ -133,5 +134,4 @@ def joystick_control():
                 send_command('Turn')
         else:
             send_command('Move')
-
     return jsonify({"status": "ok"}), 200
