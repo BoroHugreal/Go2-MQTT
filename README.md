@@ -47,7 +47,7 @@ Go2-MQQT/
 
 # Installation #
 1. Clone le repo et place-toi dans le dossier :
-- git clone ... Go2-MQQT
+- git clone https://github.com/BoroHugreal/Go2-MQQT.git Go2-MQQT
 - cd Go2-MQQT
 
 2. Installe les dépendances Python :
