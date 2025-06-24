@@ -1,5 +1,4 @@
 # app/config.py
-# -*- coding: utf-8 -*-
 # Configuration des paramètres MQTT pour l'application
 
 MQTT_BROKER = "91.108.112.88"

@@ -1,3 +1,4 @@
+# app/mqtt_sender.py
 from .mqtt_manager import mqtt_manager
 from app.config import MQTT_TOPIC_COMMAND, MQTT_TOPIC_PATH
 import json
